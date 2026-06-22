@@ -45,15 +45,32 @@ const regCode = ref('')
 const regPassword = ref('')
 const regPasswordConfirm = ref('')
 const regError = ref('')
+const regToken = ref('')
 const regStep = ref<'email' | 'verify' | 'password'>('email')
 const regCountdown = ref(0)
 const regSubmitting = ref(false)
 let regTimer: ReturnType<typeof setInterval> | null = null
 
-function sendRegCode() {
+async function sendRegCode() {
   if (regCountdown.value > 0 || !regEmail.value) return
-  // TODO: call API to send verification code
-  regStep.value = 'verify'
+  regError.value = ''
+  regSubmitting.value = true
+  try {
+    const res = await fetch('/api/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: regEmail.value }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed')
+    regToken.value = data.token
+    regStep.value = 'verify'
+  } catch (e: any) {
+    regError.value = e.message || t('發送失敗', 'Failed to send', '发送失败')
+    regSubmitting.value = false
+    return
+  }
+  regSubmitting.value = false
   regCountdown.value = 60
   regTimer = setInterval(() => {
     regCountdown.value--
@@ -64,14 +81,26 @@ function sendRegCode() {
   }, 1000)
 }
 
-function verifyRegCode() {
+async function verifyRegCode() {
   if (!regCode.value) {
     regError.value = t('請輸入驗證碼', 'Please enter verification code', '请输入验证码')
     return
   }
-  // TODO: call API to verify code
   regError.value = ''
-  regStep.value = 'password'
+  regSubmitting.value = true
+  try {
+    const res = await fetch('/api/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: regToken.value, code: regCode.value }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Verification failed')
+    regStep.value = 'password'
+  } catch (e: any) {
+    regError.value = e.message || t('驗證失敗', 'Verification failed', '验证失败')
+  }
+  regSubmitting.value = false
 }
 
 function handleRegister() {
