@@ -56,15 +56,15 @@ function logout() {
 }
 
 const navItems = computed(() => [
-  { key: 'dashboard', icon: '&#9776;', label: t('賬戶總覽', 'Dashboard', '账户总览'), labelEn: 'Dashboard', route: '/sec/dashboard' },
-  { key: 'trade', icon: '&#9998;', label: t('交易下單', 'Trade', '交易下单'), labelEn: 'Trade', route: '/sec/trade' },
-  { key: 'orders', icon: '&#9744;', label: t('委託訂單', 'Orders', '委托订单'), labelEn: 'Orders', route: '/sec/orders' },
-  { key: 'holdings', icon: '&#9733;', label: t('持倉', 'Holdings', '持仓'), labelEn: 'Portfolio', route: '/sec/holdings' },
-  { key: 'market', icon: '&#8593;', label: t('行情', 'Market', '行情'), labelEn: 'Market', route: '/sec/market' },
-  { key: 'funds', icon: '&#36;', label: t('資金管理', 'Funds', '资金管理'), labelEn: 'Funds', route: '/sec/funds' },
-  { key: 'history', icon: '&#9201;', label: t('交易歷史', 'History', '交易历史'), labelEn: 'History', route: '/sec/history' },
-  { key: 'reports', icon: '&#9998;', label: t('報表', 'Reports', '报表'), labelEn: 'Reports', route: '/sec/history' },
-  { key: 'settings', icon: '&#9881;', label: t('設置', 'Settings', '设置'), labelEn: 'Settings', route: '/sec/settings' },
+  { key: 'dashboard', icon: '📊', label: t('賬戶總覽', 'Dashboard', '账户总览'), labelEn: 'Dashboard', route: '/sec/dashboard' },
+  { key: 'trade', icon: '📝', label: t('交易下單', 'Trade', '交易下单'), labelEn: 'Trade', route: '/sec/trade' },
+  { key: 'orders', icon: '📋', label: t('委託訂單', 'Orders', '委托订单'), labelEn: 'Orders', route: '/sec/orders' },
+  { key: 'holdings', icon: '📁', label: t('持倉', 'Holdings', '持仓'), labelEn: 'Portfolio', route: '/sec/holdings' },
+  { key: 'market', icon: '📈', label: t('行情', 'Market', '行情'), labelEn: 'Market', route: '/sec/market' },
+  { key: 'funds', icon: '💰', label: t('資金管理', 'Funds', '资金管理'), labelEn: 'Funds', route: '/sec/funds' },
+  { key: 'history', icon: '🕐', label: t('交易歷史', 'History', '交易历史'), labelEn: 'History', route: '/sec/history' },
+  { key: 'reports', icon: '📄', label: t('報表', 'Reports', '报表'), labelEn: 'Reports', route: '/sec/history' },
+  { key: 'settings', icon: '⚙️', label: t('設置', 'Settings', '设置'), labelEn: 'Settings', route: '/sec/settings' },
 ])
 
 const mobileNav = computed(() => navItems.value.slice(0, 5))
@@ -91,50 +91,51 @@ function togglePaper() {
 <template>
   <div class="flex h-screen bg-slate-50">
     <!-- Desktop Sidebar -->
-    <aside class="hidden lg:flex flex-col w-60 bg-[#0f172a] text-white shrink-0">
-      <!-- Top: Logo + Clock -->
-      <div class="px-4 pt-4 pb-2">
-        <div class="flex items-start justify-between">
-          <img :src="sidebarLogo" alt="CM Financial" class="h-12" />
-          <div class="text-right">
-            <p class="text-[10px] text-slate-400">{{ dateString }}</p>
-            <p class="text-xs font-mono text-slate-300">{{ timeString }}</p>
-          </div>
-        </div>
+    <aside class="hidden lg:flex flex-col w-64 text-white shrink-0" style="background-color: #0f172a;">
+      <!-- Logo (light bg card, matching OTC exactly) -->
+      <div class="px-4 py-1 border-b border-slate-700 bg-slate-100 mx-2 mt-2 rounded-lg overflow-hidden" style="max-height: 80px;">
+        <img :src="sidebarLogo" alt="CM Financial" class="w-full object-contain" style="margin-top: -15%; margin-bottom: -15%;" />
       </div>
-      <!-- Greeting -->
-      <div class="px-4 pb-3 border-b border-slate-700">
-        <p class="text-sm text-slate-200">{{ greeting }}，<span class="font-semibold text-white">{{ userName }}{{ t('先生', '', '先生') }}</span>{{ langMode === 'en' ? '' : '！' }}</p>
+
+      <!-- Clock + Greeting -->
+      <div class="px-5 py-4 border-b border-slate-700">
+        <div class="text-xs text-slate-400 mb-1">🕐 {{ dateString }} {{ timeString }}</div>
+        <div class="text-lg font-bold text-white">{{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！</div>
         <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 text-xs font-medium text-center">
-          {{ t('模擬盤', 'Paper Trade', '模拟盘') }}
+          {{ t('模擬盤模式', 'Paper Trade Mode', '模拟盘模式') }}
         </div>
       </div>
-      <!-- Nav -->
-      <nav class="flex-1 py-2 overflow-y-auto">
+
+      <!-- Navigation (matching OTC exactly) -->
+      <nav class="flex-1 py-3 overflow-y-auto">
         <RouterLink
           v-for="item in navItems"
           :key="item.key"
           :to="item.route"
-          class="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-800"
-          :class="isActive(item.route) ? 'bg-slate-800 border-l-3 border-blue-500 text-white' : 'text-slate-300 border-l-3 border-transparent'"
+          :class="[
+            'w-full text-left px-5 py-3 flex items-center gap-3 text-lg transition-colors',
+            isActive(item.route)
+              ? 'bg-blue-600/20 text-white border-l-4 border-blue-400'
+              : 'text-slate-300 hover:bg-slate-700/50 border-l-4 border-transparent'
+          ]"
         >
-          <span class="text-lg w-6 text-center" v-html="item.icon"></span>
-          <div>
-            <span class="text-sm block leading-tight">{{ item.label }}</span>
-            <span class="text-[10px] text-slate-500 block leading-tight">{{ item.labelEn }}</span>
-          </div>
+          <span class="text-xl">{{ item.icon }}</span>
+          <span>
+            <span class="block font-semibold">{{ item.label }}</span>
+            <span class="block text-xs opacity-60">{{ item.labelEn }}</span>
+          </span>
         </RouterLink>
       </nav>
-      <!-- Bottom -->
-      <div class="px-4 py-3 border-t border-slate-700">
-        <button @click="logout" class="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors w-full">
-          <span class="text-lg">⎋</span>
-          <div>
-            <span class="block leading-tight">{{ t('退出登入', 'Logout', '退出登录') }}</span>
-            <span class="text-[10px] text-slate-500 block leading-tight">{{ langMode !== 'en' ? 'Logout' : '' }}</span>
-          </div>
+
+      <!-- Logout + Version -->
+      <div class="border-t border-slate-700 p-3">
+        <button
+          class="w-full text-left px-5 py-3 text-base text-slate-300 hover:bg-slate-700 rounded-lg"
+          @click="logout"
+        >
+          {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <p class="text-xs text-white font-semibold mt-3">v260622.007</p>
+        <div class="text-center text-xs text-white font-semibold mt-2">v260622.008</div>
       </div>
     </aside>
 
