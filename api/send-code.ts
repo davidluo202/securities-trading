@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `誠港金融證券交易 <${fromEmail}>`,
+        from: `誠港金融證券交易 <noreply@cmf-otc.com>`,
         to: [email],
         subject: '驗證碼 - 誠港金融證券交易客戶端',
         html: `
