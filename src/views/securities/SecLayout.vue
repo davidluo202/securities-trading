@@ -92,9 +92,9 @@ function togglePaper() {
   <div class="flex h-screen bg-slate-50">
     <!-- Desktop Sidebar -->
     <aside class="hidden lg:flex flex-col w-64 text-white shrink-0" style="background-color: #0f172a;">
-      <!-- Logo (light bg card, matching OTC exactly) -->
-      <div class="px-4 py-1 border-b border-slate-700 bg-slate-100 mx-2 mt-2 rounded-lg overflow-hidden" style="max-height: 80px;">
-        <img :src="sidebarLogo" alt="CM Financial" class="w-full object-contain" style="margin-top: -15%; margin-bottom: -15%;" />
+      <!-- Logo (light bg card, rounded corners) -->
+      <div class="mx-3 mt-3 mb-1 bg-white rounded-xl p-3">
+        <img :src="sidebarLogo" alt="CM Financial" class="w-full h-auto" />
       </div>
 
       <!-- Clock + Greeting (yellow bg in paper mode) -->
@@ -196,8 +196,8 @@ function togglePaper() {
         <div class="absolute inset-0 bg-black/40" @click="sidebarOpen = false" />
         <aside class="absolute left-0 top-0 bottom-0 w-64 bg-[#0f172a] text-white flex flex-col">
           <!-- Mobile Logo -->
-          <div class="px-3 py-1 bg-slate-100 mx-2 mt-2 rounded-lg overflow-hidden" style="max-height: 70px;">
-            <img :src="sidebarLogo" alt="CM Financial" class="w-full object-contain" style="margin-top: -15%; margin-bottom: -15%;" />
+          <div class="mx-3 mt-3 mb-1 bg-white rounded-xl p-3">
+            <img :src="sidebarLogo" alt="CM Financial" class="w-full h-auto" />
           </div>
           <!-- Mobile Greeting -->
           <div class="px-4 py-3 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
