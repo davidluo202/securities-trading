@@ -22,7 +22,8 @@ interface Candle {
 
 const quote = ref<QuoteData | null>(null)
 const loading = ref(true)
-const activePeriod = ref<'day' | 'week' | 'month'>('day')
+type PeriodKey = 'm1' | 'm5' | 'm15' | 'm30' | 'm60' | 'day' | 'week' | 'month'
+const activePeriod = ref<PeriodKey>('day')
 const chartContainerRef = ref<HTMLElement | null>(null)
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -31,12 +32,19 @@ let candleSeries: ISeriesApi<'Candlestick'> | null = null
 let volumeSeries: ISeriesApi<'Histogram'> | null = null
 let ma10Series: ISeriesApi<'Line'> | null = null
 let ma20Series: ISeriesApi<'Line'> | null = null
+let ma30Series: ISeriesApi<'Line'> | null = null
+let ma60Series: ISeriesApi<'Line'> | null = null
 let resizeObserver: ResizeObserver | null = null
 
-const periods = [
-  { key: 'day' as const, label: () => t('日K', 'Daily', '日K') },
-  { key: 'week' as const, label: () => t('周K', 'Weekly', '周K') },
-  { key: 'month' as const, label: () => t('月K', 'Monthly', '月K') },
+const periods: { key: PeriodKey; label: () => string }[] = [
+  { key: 'm1', label: () => t('1分', '1m', '1分') },
+  { key: 'm5', label: () => t('5分', '5m', '5分') },
+  { key: 'm15', label: () => t('15分', '15m', '15分') },
+  { key: 'm30', label: () => t('30分', '30m', '30分') },
+  { key: 'm60', label: () => t('60分', '60m', '60分') },
+  { key: 'day', label: () => t('日K', 'Daily', '日K') },
+  { key: 'week', label: () => t('周K', 'Weekly', '周K') },
+  { key: 'month', label: () => t('月K', 'Monthly', '月K') },
 ]
 
 function formatVolume(vol: string): string {
@@ -150,6 +158,20 @@ function initChart() {
     lastValueVisible: false,
   })
 
+  ma30Series = chart.addSeries(LineSeries, {
+    color: '#06b6d4',
+    lineWidth: 1,
+    priceLineVisible: false,
+    lastValueVisible: false,
+  })
+
+  ma60Series = chart.addSeries(LineSeries, {
+    color: '#ec4899',
+    lineWidth: 1,
+    priceLineVisible: false,
+    lastValueVisible: false,
+  })
+
   // Resize observer
   resizeObserver = new ResizeObserver(() => {
     if (chart && chartContainerRef.value) {
@@ -161,7 +183,7 @@ function initChart() {
 
 async function loadChartData() {
   const candles = await fetchKline(activePeriod.value)
-  if (!chart || !candleSeries || !volumeSeries || !ma10Series || !ma20Series) return
+  if (!chart || !candleSeries || !volumeSeries || !ma10Series || !ma20Series || !ma30Series || !ma60Series) return
   if (candles.length === 0) return
 
   const candleData: CandlestickData[] = candles.map(c => ({
@@ -182,11 +204,13 @@ async function loadChartData() {
 
   ma10Series.setData(calcMA(candles, 10))
   ma20Series.setData(calcMA(candles, 20))
+  ma30Series.setData(calcMA(candles, 30))
+  ma60Series.setData(calcMA(candles, 60))
 
   chart.timeScale().fitContent()
 }
 
-function switchPeriod(p: 'day' | 'week' | 'month') {
+function switchPeriod(p: PeriodKey) {
   activePeriod.value = p
   loadChartData()
 }
@@ -272,6 +296,8 @@ onUnmounted(() => {
         <div class="ml-auto flex items-center gap-3 text-xs text-slate-400">
           <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-amber-500 rounded"></span>MA10</span>
           <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-violet-500 rounded"></span>MA20</span>
+          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-cyan-500 rounded"></span>MA30</span>
+          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-pink-500 rounded"></span>MA60</span>
         </div>
       </div>
       <div
