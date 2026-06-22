@@ -78,14 +78,6 @@ const langs: { mode: LangMode; label: string }[] = [
   { mode: 'bilingual', label: '雙語 Bilingual' },
 ]
 
-function togglePaper() {
-  paperMode.value = !paperMode.value
-  if (paperMode.value) {
-    router.push('/sec/paper-trade')
-  } else if (route.path === '/sec/paper-trade') {
-    router.push('/sec/dashboard')
-  }
-}
 </script>
 
 <template>
@@ -151,15 +143,6 @@ function togglePaper() {
           <span v-if="paperMode" class="lg:hidden text-xs font-bold text-yellow-900 bg-yellow-500/40 px-2 py-0.5 rounded">{{ t('模擬盤', 'Paper', '模拟盘') }}</span>
         </div>
         <div class="flex items-center gap-3">
-          <!-- Paper Trade Toggle -->
-          <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-            :class="paperMode ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-            @click="togglePaper"
-          >
-            <span>🎮</span>
-            <span>{{ t('模擬交易', 'Paper Trade', '模拟交易') }}</span>
-          </button>
           <!-- Language Switcher -->
           <div class="relative">
             <button
