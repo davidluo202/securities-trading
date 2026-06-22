@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useLanguage } from '../../composables/useLanguage'
+import { useLanguage, type LangMode } from '../../composables/useLanguage'
 
 const router = useRouter()
-const { t } = useLanguage()
+const { t, langMode, setLang } = useLanguage()
+
+const langOptions: { value: LangMode; label: string }[] = [
+  { value: 'zh-TW', label: '繁體中文' },
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'en', label: 'English' },
+  { value: 'bilingual', label: '中英對照' },
+]
+
+const logoSrc = computed(() => {
+  if (langMode.value === 'en' || langMode.value === 'bilingual') return '/logo-en-black.jpg'
+  return '/logo-zh.jpg'
+})
 
 const email = ref('')
 const code = ref('')
@@ -57,7 +69,16 @@ function handleLogin() {
 <template>
   <div class="min-h-screen bg-slate-100 flex items-center justify-center px-4">
     <div class="w-full max-w-md rounded-2xl shadow-xl p-8 relative" :class="cardClass">
-      <!-- Live/Paper Toggle -->
+      <!-- Top bar: Language selector (left) + Live/Paper Toggle (right) -->
+      <div class="absolute top-4 left-4">
+        <select
+          :value="langMode"
+          @change="setLang(($event.target as HTMLSelectElement).value as LangMode)"
+          class="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-600 cursor-pointer"
+        >
+          <option v-for="opt in langOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
       <div class="absolute top-4 right-4">
         <button
           class="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
@@ -70,14 +91,13 @@ function handleLogin() {
         </button>
       </div>
 
-      <!-- Logo -->
-      <div class="flex flex-col items-center mb-6 mt-2">
-        <img src="/logo-en-black.jpg" alt="CM Financial" class="h-12 mb-2" />
-        <img src="/logo-zh.jpg" alt="誠港金融" class="h-8 mb-4" />
+      <!-- Logo (changes with language) -->
+      <div class="flex flex-col items-center mb-6 mt-8">
+        <img :src="logoSrc" alt="CM Financial" class="h-14 mb-4" />
         <h1 class="text-xl font-bold text-slate-800 text-center">
           {{ t('誠港金融證券交易', 'CM Financial Securities Trading', '诚港金融证券交易') }}
         </h1>
-        <p class="text-sm text-slate-500 mt-1">Client Portal 客戶端</p>
+        <p class="text-sm text-slate-500 mt-1">{{ t('客戶端', 'Client Portal', '客户端') }}</p>
       </div>
 
       <!-- Email -->
