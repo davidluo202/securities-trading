@@ -127,7 +127,7 @@ const langs: { mode: LangMode; label: string }[] = [
         >
           🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260622.015</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260622.016</div>
       </div>
     </aside>
 
@@ -216,7 +216,7 @@ const langs: { mode: LangMode; label: string }[] = [
             <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
               🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
             </button>
-            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260622.015</div>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260622.016</div>
           </div>
         </aside>
       </div>
