@@ -1,5 +1,75 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+function toTencentSymbol(symbol: string): string {
+  const upper = symbol.toUpperCase()
+  if (upper.endsWith('.HK')) return 'hk' + upper.replace('.HK', '').padStart(5, '0')
+  if (upper.endsWith('.SH') || upper.endsWith('.SS')) return 'sh' + upper.replace(/\.(SH|SS)$/, '')
+  if (upper.endsWith('.SZ')) return 'sz' + upper.replace('.SZ', '')
+  return 'us' + upper
+}
+
+async function fetchRealPrices(symbol: string, days: number): Promise<{ date: string; close: number }[] | null> {
+  try {
+    const qqSymbol = toTencentSymbol(symbol)
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${qqSymbol},day,,,${days},qfq`
+    const r = await fetch(url)
+    const json = await r.json()
+
+    const dataRoot = json?.data
+    if (!dataRoot) return null
+
+    const stockData = dataRoot[qqSymbol] || Object.values(dataRoot)[0] as any
+    if (!stockData) return null
+
+    const rawCandles: any[] = stockData.qfqday || stockData.day || []
+    if (rawCandles.length === 0) return null
+
+    return rawCandles.map((c: any) => ({
+      date: c[0],
+      close: parseFloat(c[2]),
+    }))
+  } catch {
+    return null
+  }
+}
+
+function generateFallbackPrices(symbol: string, days: number): { date: string; close: number }[] {
+  // Fetch current price anchor
+  let currentPrice = 100
+  let seed = 0
+  for (let i = 0; i < symbol.length; i++) seed += symbol.charCodeAt(i)
+  seed = seed * 31 + new Date().getDate()
+
+  function seededRandom() {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff
+    return seed / 0x7fffffff
+  }
+
+  const dailyVol = 0.015
+  const today = new Date()
+  const dateList: string[] = []
+  for (let d = 0; d < days; d++) {
+    const dt = new Date(today)
+    dt.setDate(dt.getDate() - d)
+    const dow = dt.getDay()
+    if (dow === 0 || dow === 6) continue
+    dateList.push(dt.toISOString().slice(0, 10))
+  }
+  dateList.reverse()
+
+  const prices: { date: string; close: number }[] = []
+  let val = currentPrice * (1 - dailyVol * Math.sqrt(dateList.length) * (seededRandom() - 0.3))
+  for (let i = 0; i < dateList.length; i++) {
+    if (i === dateList.length - 1) {
+      val = currentPrice
+    } else {
+      val = val * (1 + dailyVol * (seededRandom() - 0.48))
+    }
+    prices.push({ date: dateList[i], close: Number(val.toFixed(2)) })
+  }
+  return prices
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
@@ -11,66 +81,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const days = Math.min(parseInt(req.query.days as string) || 30, 90)
   if (!symbol) return res.status(400).json({ error: 'Missing symbol param' })
 
-  // First fetch current price from Tencent API to anchor the random walk
-  let currentPrice = 100
-  try {
-    const upper = symbol.toUpperCase()
-    let qqSym = ''
-    if (upper.endsWith('.HK')) qqSym = 'hk' + upper.replace('.HK', '').padStart(5, '0')
-    else if (upper.endsWith('.SH') || upper.endsWith('.SS')) qqSym = 'sh' + upper.replace(/\.(SH|SS)$/, '')
-    else if (upper.endsWith('.SZ')) qqSym = 'sz' + upper.replace('.SZ', '')
-    else qqSym = 'us' + upper
-
-    const r = await fetch(`https://qt.gtimg.cn/q=${qqSym}`)
-    const buffer = await r.arrayBuffer()
-    const decoder = new TextDecoder('gbk')
-    const text = decoder.decode(buffer)
-    const match = text.match(/="([^"]*)"/)
-    if (match?.[1]) {
-      const parts = match[1].split('~')
-      const p = parseFloat(parts[3])
-      if (p > 0) currentPrice = p
-    }
-  } catch { /* use default */ }
-
-  // Generate realistic price history via random walk backward from current price
-  const prices: { date: string; close: number }[] = []
-  let price = currentPrice
-  const dailyVol = 0.015 // 1.5% daily volatility
-
-  // Seed from symbol for deterministic-ish results within the same day
-  let seed = 0
-  for (let i = 0; i < symbol.length; i++) seed += symbol.charCodeAt(i)
-  seed = seed * 31 + new Date().getDate()
-
-  function seededRandom() {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff
-    return seed / 0x7fffffff
-  }
-
-  // Walk backward from today
-  const today = new Date()
-  const dateList: string[] = []
-  for (let d = 0; d < days; d++) {
-    const dt = new Date(today)
-    dt.setDate(dt.getDate() - d)
-    // Skip weekends
-    const dow = dt.getDay()
-    if (dow === 0 || dow === 6) continue
-    dateList.push(dt.toISOString().slice(0, 10))
-  }
-  dateList.reverse()
-
-  // Build prices forward from an estimated start
-  let val = currentPrice * (1 - dailyVol * Math.sqrt(dateList.length) * (seededRandom() - 0.3))
-  for (let i = 0; i < dateList.length; i++) {
-    if (i === dateList.length - 1) {
-      val = currentPrice // ensure last point matches current
-    } else {
-      val = val * (1 + dailyVol * (seededRandom() - 0.48))
-    }
-    prices.push({ date: dateList[i], close: Number(val.toFixed(2)) })
-  }
+  // Try real data first, fallback to random walk
+  const realPrices = await fetchRealPrices(symbol, days)
+  const prices = realPrices || generateFallbackPrices(symbol, days)
 
   return res.json({ symbol, prices })
 }

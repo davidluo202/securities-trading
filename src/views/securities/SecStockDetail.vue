@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLanguage } from '../../composables/useLanguage'
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, CandlestickData, SingleValueData, Time } from 'lightweight-charts'
 
 const { t } = useLanguage()
 const route = useRoute()
@@ -14,18 +16,28 @@ interface QuoteData {
   open: number; high: number; low: number; volume: string; prevClose: number
 }
 
+interface Candle {
+  time: string; open: number; high: number; low: number; close: number; volume: number
+}
+
 const quote = ref<QuoteData | null>(null)
 const loading = ref(true)
-let pollTimer: ReturnType<typeof setInterval> | null = null
+const activePeriod = ref<'day' | 'week' | 'month'>('day')
+const chartContainerRef = ref<HTMLElement | null>(null)
 
-function toTradingViewSymbol(sym: string): string {
-  const upper = sym.toUpperCase()
-  if (upper.endsWith('.HK')) return 'HKEX:' + upper.replace('.HK', '').replace(/^0+/, '')
-  if (upper.endsWith('.SH') || upper.endsWith('.SS')) return 'SSE:' + upper.replace(/\.(SH|SS)$/, '')
-  if (upper.endsWith('.SZ')) return 'SZSE:' + upper.replace('.SZ', '')
-  // US stocks - default to NASDAQ
-  return 'NASDAQ:' + upper
-}
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let chart: IChartApi | null = null
+let candleSeries: ISeriesApi<'Candlestick'> | null = null
+let volumeSeries: ISeriesApi<'Histogram'> | null = null
+let ma10Series: ISeriesApi<'Line'> | null = null
+let ma20Series: ISeriesApi<'Line'> | null = null
+let resizeObserver: ResizeObserver | null = null
+
+const periods = [
+  { key: 'day' as const, label: () => t('日K', 'Daily', '日K') },
+  { key: 'week' as const, label: () => t('周K', 'Weekly', '周K') },
+  { key: 'month' as const, label: () => t('月K', 'Monthly', '月K') },
+]
 
 function formatVolume(vol: string): string {
   const n = parseFloat(vol)
@@ -56,6 +68,129 @@ async function fetchQuote() {
   loading.value = false
 }
 
+async function fetchKline(period: string): Promise<Candle[]> {
+  if (!symbol.value) return []
+  try {
+    const res = await fetch(`/api/stock-kline?symbol=${symbol.value}&period=${period}&count=120`)
+    if (res.ok) {
+      const data = await res.json()
+      return data.candles || []
+    }
+  } catch { /* silent */ }
+  return []
+}
+
+function calcMA(candles: Candle[], period: number): SingleValueData[] {
+  const result: SingleValueData[] = []
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) continue
+    let sum = 0
+    for (let j = i - period + 1; j <= i; j++) sum += candles[j].close
+    result.push({ time: candles[i].time as Time, value: Number((sum / period).toFixed(4)) })
+  }
+  return result
+}
+
+function initChart() {
+  if (!chartContainerRef.value) return
+  if (chart) {
+    chart.remove()
+    chart = null
+  }
+
+  chart = createChart(chartContainerRef.value, {
+    width: chartContainerRef.value.clientWidth,
+    height: chartContainerRef.value.clientHeight,
+    layout: {
+      background: { color: '#ffffff' },
+      textColor: '#64748b',
+      fontSize: 12,
+    },
+    grid: {
+      vertLines: { color: '#f1f5f9' },
+      horzLines: { color: '#f1f5f9' },
+    },
+    crosshair: { mode: 0 },
+    rightPriceScale: { borderColor: '#e2e8f0' },
+    timeScale: {
+      borderColor: '#e2e8f0',
+      timeVisible: false,
+    },
+  })
+
+  candleSeries = chart.addSeries(CandlestickSeries, {
+    upColor: '#22c55e',
+    downColor: '#ef4444',
+    borderUpColor: '#22c55e',
+    borderDownColor: '#ef4444',
+    wickUpColor: '#22c55e',
+    wickDownColor: '#ef4444',
+  })
+
+  volumeSeries = chart.addSeries(HistogramSeries, {
+    priceFormat: { type: 'volume' },
+    priceScaleId: 'volume',
+  }, 1)
+
+  chart.priceScale('volume').applyOptions({
+    scaleMargins: { top: 0, bottom: 0 },
+  })
+
+  ma10Series = chart.addSeries(LineSeries, {
+    color: '#f59e0b',
+    lineWidth: 1,
+    priceLineVisible: false,
+    lastValueVisible: false,
+  })
+
+  ma20Series = chart.addSeries(LineSeries, {
+    color: '#8b5cf6',
+    lineWidth: 1,
+    priceLineVisible: false,
+    lastValueVisible: false,
+  })
+
+  // Resize observer
+  resizeObserver = new ResizeObserver(() => {
+    if (chart && chartContainerRef.value) {
+      chart.applyOptions({ width: chartContainerRef.value.clientWidth })
+    }
+  })
+  resizeObserver.observe(chartContainerRef.value)
+}
+
+async function loadChartData() {
+  const candles = await fetchKline(activePeriod.value)
+  if (!chart || !candleSeries || !volumeSeries || !ma10Series || !ma20Series) return
+  if (candles.length === 0) return
+
+  const candleData: CandlestickData[] = candles.map(c => ({
+    time: c.time as Time,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+  }))
+  candleSeries.setData(candleData)
+
+  const volumeData = candles.map(c => ({
+    time: c.time as Time,
+    value: c.volume,
+    color: c.close >= c.open ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)',
+  }))
+  volumeSeries.setData(volumeData)
+
+  ma10Series.setData(calcMA(candles, 10))
+  ma20Series.setData(calcMA(candles, 20))
+
+  chart.timeScale().fitContent()
+}
+
+function switchPeriod(p: 'day' | 'week' | 'month') {
+  activePeriod.value = p
+  loadChartData()
+}
+
 const ohlcItems = computed(() => {
   if (!quote.value) return []
   const q = quote.value
@@ -69,64 +204,25 @@ const ohlcItems = computed(() => {
   ]
 })
 
-let chartInitialized = false
-
-function initChart() {
-  if (chartInitialized) return
-  const container = document.getElementById('tradingview-chart')
-  if (!container) return
-  chartInitialized = true
-
-  const tvSymbol = toTradingViewSymbol(symbol.value)
-  const widgetContainer = document.createElement('div')
-  widgetContainer.className = 'tradingview-widget-container'
-  widgetContainer.style.height = '100%'
-  widgetContainer.style.width = '100%'
-
-  const widgetDiv = document.createElement('div')
-  widgetDiv.className = 'tradingview-widget-container__widget'
-  widgetDiv.style.height = 'calc(100% - 32px)'
-  widgetDiv.style.width = '100%'
-  widgetContainer.appendChild(widgetDiv)
-
-  const script = document.createElement('script')
-  script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
-  script.type = 'text/javascript'
-  script.async = true
-  script.innerHTML = JSON.stringify({
-    autosize: true,
-    symbol: tvSymbol,
-    interval: 'D',
-    timezone: 'Asia/Hong_Kong',
-    theme: 'light',
-    style: '1',
-    locale: 'zh_CN',
-    toolbar_bg: '#f1f3f6',
-    enable_publishing: false,
-    hide_side_toolbar: false,
-    allow_symbol_change: true,
-    studies: ['MASimple@tv-basicstudies'],
-    container_id: 'tradingview-chart',
-  })
-  widgetContainer.appendChild(script)
-  container.appendChild(widgetContainer)
-}
-
 function goBack() {
   router.back()
 }
 
-onMounted(() => {
-  fetchQuote().then(() => {
-    // Small delay to ensure DOM is rendered
-    setTimeout(initChart, 100)
-  })
+onMounted(async () => {
+  await fetchQuote()
+  await nextTick()
+  initChart()
+  await loadChartData()
   pollTimer = setInterval(fetchQuote, 30000)
 })
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
-  chartInitialized = false
+  if (resizeObserver) resizeObserver.disconnect()
+  if (chart) {
+    chart.remove()
+    chart = null
+  }
 })
 </script>
 
@@ -159,9 +255,29 @@ onUnmounted(() => {
       <div v-else-if="loading" class="text-sm text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
     </div>
 
-    <!-- TradingView Chart -->
+    <!-- Period Tabs + Chart -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-      <div id="tradingview-chart" style="height: 450px;"></div>
+      <div class="flex items-center gap-1 px-4 pt-3 pb-2">
+        <button
+          v-for="p in periods"
+          :key="p.key"
+          class="px-3 py-1 rounded text-sm font-medium transition-colors"
+          :class="activePeriod === p.key
+            ? 'bg-blue-50 text-blue-600'
+            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+          @click="switchPeriod(p.key)"
+        >
+          {{ p.label() }}
+        </button>
+        <div class="ml-auto flex items-center gap-3 text-xs text-slate-400">
+          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-amber-500 rounded"></span>MA10</span>
+          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-violet-500 rounded"></span>MA20</span>
+        </div>
+      </div>
+      <div
+        ref="chartContainerRef"
+        class="h-[300px] md:h-[400px] w-full"
+      ></div>
     </div>
 
     <!-- OHLC Data Grid -->
