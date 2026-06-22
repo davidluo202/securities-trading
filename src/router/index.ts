@@ -27,6 +27,7 @@ const router = createRouter({
         { path: 'paper-trade', name: 'paper-trade', component: () => import('../views/securities/SecPaperTrade.vue') },
         { path: 'history', name: 'history', component: () => import('../views/securities/SecHistory.vue') },
         { path: 'settings', name: 'settings', component: () => import('../views/securities/SecSettings.vue') },
+        { path: 'stock/:symbol', name: 'stock-detail', component: () => import('../views/securities/SecStockDetail.vue') },
       ],
     },
   ],

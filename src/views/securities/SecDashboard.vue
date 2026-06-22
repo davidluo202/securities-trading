@@ -32,6 +32,21 @@ async function fetchIndices() {
   loading.value = false
 }
 
+const sparklineCache = ref<Record<string, string>>({})
+
+function pricesToSparkline(prices: number[]): string {
+  if (prices.length < 2) return ''
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  const range = max - min || 1
+  const step = 80 / (prices.length - 1)
+  return prices.map((p, i) => {
+    const x = (i * step).toFixed(1)
+    const y = (29 - ((p - min) / range) * 28).toFixed(1)
+    return `${x},${y}`
+  }).join(' ')
+}
+
 function generateSparkline(price: number, prevClose: number): string {
   const points: string[] = []
   const seed = Math.abs(price * 100) | 0
@@ -49,13 +64,35 @@ function generateSparkline(price: number, prevClose: number): string {
   return points.join(' ')
 }
 
+async function fetchSparklines() {
+  // Fetch history for index-like symbols using stock-history API
+  const symbols = ['HSI', '000001.SH', '399001.SZ']
+  for (const sym of symbols) {
+    try {
+      const res = await fetch(`/api/stock-history?symbol=${sym}&days=15`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.prices?.length > 1) {
+          sparklineCache.value[sym] = pricesToSparkline(data.prices.map((p: { close: number }) => p.close))
+        }
+      }
+    } catch { /* silent */ }
+  }
+}
+
+const INDEX_HISTORY_MAP: Record<string, string> = {
+  HSI: 'HSI',
+  SSE: '000001.SH',
+  SZSE: '399001.SZ',
+}
+
 const indices = computed(() =>
   indicesData.value.map(idx => ({
     name: INDEX_NAMES[idx.symbol]?.() || idx.name || idx.symbol,
     value: idx.price > 0 ? idx.price.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--',
     change: idx.price > 0 ? `${idx.change >= 0 ? '+' : ''}${idx.change.toFixed(2)} (${idx.changePercent >= 0 ? '+' : ''}${idx.changePercent.toFixed(2)}%)` : '--',
     up: idx.change >= 0,
-    spark: generateSparkline(idx.price, idx.price - idx.change),
+    spark: sparklineCache.value[INDEX_HISTORY_MAP[idx.symbol] || ''] || generateSparkline(idx.price, idx.price - idx.change),
   }))
 )
 
@@ -74,6 +111,7 @@ function goMarket() {
 
 onMounted(() => {
   fetchIndices()
+  fetchSparklines()
   pollTimer = setInterval(fetchIndices, 30000)
 })
 

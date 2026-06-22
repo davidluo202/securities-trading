@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLanguage } from '../../composables/useLanguage'
 const { t } = useLanguage()
+const router = useRouter()
+
+function goStock(symbol: string) {
+  router.push(`/sec/stock/${encodeURIComponent(symbol)}`)
+}
 
 const activeList = ref<'watchlist' | 'hsi' | 'hstech'>('watchlist')
 
@@ -24,6 +30,21 @@ async function fetchWatchlist() {
   loading.value = false
 }
 
+const sparklineCache = ref<Record<string, string>>({})
+
+function pricesToSparkline(prices: number[]): string {
+  if (prices.length < 2) return ''
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  const range = max - min || 1
+  const step = 80 / (prices.length - 1)
+  return prices.map((p, i) => {
+    const x = (i * step).toFixed(1)
+    const y = (29 - ((p - min) / range) * 28).toFixed(1)
+    return `${x},${y}`
+  }).join(' ')
+}
+
 function generateSparkline(price: number, prevClose: number): string {
   const points: string[] = []
   const seed = Math.abs(price * 100) | 0
@@ -39,6 +60,21 @@ function generateSparkline(price: number, prevClose: number): string {
     points.push(`${x},${Math.max(1, Math.min(29, y)).toFixed(1)}`)
   }
   return points.join(' ')
+}
+
+async function fetchSparklines() {
+  const symbolList = DEFAULT_WATCHLIST.split(',').map(s => s.trim())
+  for (const sym of symbolList) {
+    try {
+      const res = await fetch(`/api/stock-history?symbol=${sym}&days=15`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.prices?.length > 1) {
+          sparklineCache.value[sym] = pricesToSparkline(data.prices.map((p: { close: number }) => p.close))
+        }
+      }
+    } catch { /* silent */ }
+  }
 }
 
 function formatVolume(vol: string): string {
@@ -58,7 +94,7 @@ const watchlist = computed(() =>
     change: s.change,
     pct: s.changePercent,
     volume: formatVolume(s.volume),
-    spark: generateSparkline(s.price, s.prevClose),
+    spark: sparklineCache.value[s.symbol] || generateSparkline(s.price, s.prevClose),
   }))
 )
 
@@ -68,6 +104,7 @@ const usStocks = computed(() => watchlist.value.filter(s => !s.symbol.includes('
 
 onMounted(() => {
   fetchWatchlist()
+  fetchSparklines()
   pollTimer = setInterval(fetchWatchlist, 30000)
 })
 
@@ -88,7 +125,7 @@ onUnmounted(() => {
           <h3 class="text-sm font-semibold text-slate-700">{{ t('港股排行', 'HK Top Movers', '港股排行') }}</h3>
         </div>
         <div class="divide-y divide-slate-50">
-          <div v-for="(s, idx) in hkStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+          <div v-for="(s, idx) in hkStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
             <span class="w-6 text-xs font-bold text-slate-400">{{ idx + 1 }}</span>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-slate-800 truncate">{{ s.name }}</p>
@@ -112,7 +149,7 @@ onUnmounted(() => {
           <h3 class="text-sm font-semibold text-slate-700">{{ t('美股排行', 'US Top Movers', '美股排行') }}</h3>
         </div>
         <div class="divide-y divide-slate-50">
-          <div v-for="(s, idx) in usStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+          <div v-for="(s, idx) in usStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
             <span class="w-6 text-xs font-bold text-slate-400">{{ idx + 1 }}</span>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-slate-800 truncate">{{ s.name }}</p>
@@ -167,7 +204,7 @@ onUnmounted(() => {
             <tr v-else-if="watchlist.length === 0">
               <td colspan="7" class="px-4 py-6 text-center text-slate-400">{{ t('暫無數據', 'No data', '暂无数据') }}</td>
             </tr>
-            <tr v-for="s in watchlist" v-else :key="s.symbol" class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
+            <tr v-for="s in watchlist" v-else :key="s.symbol" class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" @click="goStock(s.symbol)">
               <td class="px-4 py-3 font-medium text-blue-600">{{ s.symbol }}</td>
               <td class="px-4 py-3 text-slate-600">{{ s.name }}</td>
               <td class="px-4 py-3 text-right font-medium">{{ s.price > 0 ? s.price.toFixed(2) : '--' }}</td>
