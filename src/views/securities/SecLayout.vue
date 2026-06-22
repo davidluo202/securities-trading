@@ -56,15 +56,15 @@ function logout() {
 }
 
 const navItems = computed(() => [
-  { key: 'dashboard', icon: '📊', label: t('總覽', 'Dashboard', '总览'), route: '/sec/dashboard' },
-  { key: 'trade', icon: '💹', label: t('交易', 'Trade', '交易'), route: '/sec/trade' },
-  { key: 'orders', icon: '📋', label: t('委託', 'Orders', '委托'), route: '/sec/orders' },
-  { key: 'holdings', icon: '💼', label: t('持倉', 'Holdings', '持仓'), route: '/sec/holdings' },
-  { key: 'market', icon: '📈', label: t('行情', 'Market', '行情'), route: '/sec/market' },
-  { key: 'funds', icon: '💰', label: t('資金', 'Funds', '资金'), route: '/sec/funds' },
-  { key: 'paper-trade', icon: '🎮', label: t('模擬', 'Paper', '模拟'), route: '/sec/paper-trade' },
-  { key: 'history', icon: '📜', label: t('歷史', 'History', '历史'), route: '/sec/history' },
-  { key: 'settings', icon: '⚙️', label: t('設定', 'Settings', '设定'), route: '/sec/settings' },
+  { key: 'dashboard', icon: '&#9776;', label: t('賬戶總覽', 'Dashboard', '账户总览'), labelEn: 'Dashboard', route: '/sec/dashboard' },
+  { key: 'trade', icon: '&#9998;', label: t('交易下單', 'Trade', '交易下单'), labelEn: 'Trade', route: '/sec/trade' },
+  { key: 'orders', icon: '&#9744;', label: t('委託訂單', 'Orders', '委托订单'), labelEn: 'Orders', route: '/sec/orders' },
+  { key: 'holdings', icon: '&#9733;', label: t('持倉', 'Holdings', '持仓'), labelEn: 'Portfolio', route: '/sec/holdings' },
+  { key: 'market', icon: '&#8593;', label: t('行情', 'Market', '行情'), labelEn: 'Market', route: '/sec/market' },
+  { key: 'funds', icon: '&#36;', label: t('資金管理', 'Funds', '资金管理'), labelEn: 'Funds', route: '/sec/funds' },
+  { key: 'history', icon: '&#9201;', label: t('交易歷史', 'History', '交易历史'), labelEn: 'History', route: '/sec/history' },
+  { key: 'reports', icon: '&#9998;', label: t('報表', 'Reports', '报表'), labelEn: 'Reports', route: '/sec/history' },
+  { key: 'settings', icon: '&#9881;', label: t('設置', 'Settings', '设置'), labelEn: 'Settings', route: '/sec/settings' },
 ])
 
 const mobileNav = computed(() => navItems.value.slice(0, 5))
@@ -92,35 +92,49 @@ function togglePaper() {
   <div class="flex h-screen bg-slate-50">
     <!-- Desktop Sidebar -->
     <aside class="hidden lg:flex flex-col w-60 bg-[#0f172a] text-white shrink-0">
-      <div class="px-5 py-4 border-b border-slate-700">
-        <img :src="sidebarLogo" alt="CM Financial" class="w-full mb-3" />
-        <p class="text-sm text-slate-200">{{ greeting }}，<span class="font-semibold">{{ userName }}</span></p>
-        <div class="flex items-center gap-2 mt-1">
-          <span class="text-xl font-mono font-bold text-white">{{ timeString }}</span>
+      <!-- Top: Logo + Clock -->
+      <div class="px-4 pt-4 pb-2">
+        <div class="flex items-start justify-between">
+          <img :src="sidebarLogo" alt="CM Financial" class="h-12" />
+          <div class="text-right">
+            <p class="text-[10px] text-slate-400">{{ dateString }}</p>
+            <p class="text-xs font-mono text-slate-300">{{ timeString }}</p>
+          </div>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">{{ dateString }}</p>
+      </div>
+      <!-- Greeting -->
+      <div class="px-4 pb-3 border-b border-slate-700">
+        <p class="text-sm text-slate-200">{{ greeting }}，<span class="font-semibold text-white">{{ userName }}{{ t('先生', '', '先生') }}</span>{{ langMode === 'en' ? '' : '！' }}</p>
         <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 text-xs font-medium text-center">
           {{ t('模擬盤', 'Paper Trade', '模拟盘') }}
         </div>
       </div>
-      <nav class="flex-1 py-3 overflow-y-auto">
+      <!-- Nav -->
+      <nav class="flex-1 py-2 overflow-y-auto">
         <RouterLink
           v-for="item in navItems"
           :key="item.key"
           :to="item.route"
-          class="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-slate-800"
+          class="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-800"
           :class="isActive(item.route) ? 'bg-slate-800 border-l-3 border-blue-500 text-white' : 'text-slate-300 border-l-3 border-transparent'"
         >
-          <span class="text-base">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
+          <span class="text-lg w-6 text-center" v-html="item.icon"></span>
+          <div>
+            <span class="text-sm block leading-tight">{{ item.label }}</span>
+            <span class="text-[10px] text-slate-500 block leading-tight">{{ item.labelEn }}</span>
+          </div>
         </RouterLink>
       </nav>
-      <div class="px-5 py-3 border-t border-slate-700">
+      <!-- Bottom -->
+      <div class="px-4 py-3 border-t border-slate-700">
         <button @click="logout" class="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors w-full">
-          <span>🚪</span>
-          <span>{{ t('退出登入', 'Logout', '退出登录') }}</span>
+          <span class="text-lg">⎋</span>
+          <div>
+            <span class="block leading-tight">{{ t('退出登入', 'Logout', '退出登录') }}</span>
+            <span class="text-[10px] text-slate-500 block leading-tight">{{ langMode !== 'en' ? 'Logout' : '' }}</span>
+          </div>
         </button>
-        <p class="text-xs text-white font-semibold mt-2">v260622.006</p>
+        <p class="text-xs text-white font-semibold mt-3">v260622.007</p>
       </div>
     </aside>
 
