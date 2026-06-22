@@ -1,55 +1,98 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage'
 const { t } = useLanguage()
 
 const activeList = ref<'watchlist' | 'hsi' | 'hstech'>('watchlist')
 
-const watchlist = [
-  { symbol: '0700.HK', name: '騰訊控股', price: 348.60, change: +5.80, pct: +1.69, volume: '12.5M', spark: '0,22 10,18 20,20 30,14 40,16 50,10 60,12 70,8 80,5' },
-  { symbol: '9988.HK', name: '阿里巴巴', price: 86.20, change: +1.35, pct: +1.59, volume: '45.2M', spark: '0,25 10,20 20,22 30,18 40,15 50,17 60,12 70,10 80,7' },
-  { symbol: '1810.HK', name: '小米集團', price: 19.80, change: +0.40, pct: +2.06, volume: '88.3M', spark: '0,26 10,24 20,22 30,18 40,20 50,14 60,12 70,8 80,4' },
-  { symbol: '3690.HK', name: '美團', price: 132.40, change: -1.20, pct: -0.90, volume: '18.7M', spark: '0,8 10,10 20,12 30,15 40,14 50,18 60,20 70,24 80,26' },
-  { symbol: '2318.HK', name: '中國平安', price: 42.35, change: +0.55, pct: +1.32, volume: '32.1M', spark: '0,24 10,22 20,20 30,16 40,18 50,14 60,10 70,8 80,6' },
-  { symbol: 'AAPL', name: 'Apple', price: 185.20, change: -0.80, pct: -0.43, volume: '52.4M', spark: '0,10 10,12 20,8 30,14 40,16 50,20 60,18 70,22 80,24' },
-  { symbol: 'TSLA', name: 'Tesla', price: 238.50, change: +3.20, pct: +1.36, volume: '78.9M', spark: '0,24 10,20 20,22 30,16 40,18 50,12 60,14 70,8 80,6' },
-  { symbol: 'NVDA', name: 'NVIDIA', price: 128.40, change: +2.10, pct: +1.66, volume: '245.6M', spark: '0,28 10,24 20,26 30,20 40,18 50,14 60,10 70,8 80,3' },
-]
+const DEFAULT_WATCHLIST = '0700.HK,9988.HK,9618.HK,1810.HK,0388.HK,2318.HK,3690.HK,AAPL,TSLA,NVDA'
 
-const aShareTop = [
-  { rank: 1, name: '寒武紀', code: '688256', price: 285.40, pct: +9.88, spark: '0,28 10,26 20,22 30,18 40,16 50,12 60,8 70,5 80,2' },
-  { rank: 2, name: '中芯國際', code: '688981', price: 142.80, pct: +7.52, spark: '0,26 10,24 20,20 30,18 40,14 50,12 60,10 70,6 80,4' },
-  { rank: 3, name: '北方華創', code: '002371', price: 368.20, pct: +6.35, spark: '0,24 10,22 20,20 30,16 40,14 50,10 60,8 70,6 80,3' },
-  { rank: 4, name: '海光信息', code: '688041', price: 98.60, pct: +5.82, spark: '0,25 10,22 20,24 30,18 40,16 50,12 60,10 70,7 80,4' },
-  { rank: 5, name: '瀾起科技', code: '688008', price: 76.50, pct: +5.14, spark: '0,26 10,24 20,22 30,20 40,16 50,14 60,10 70,8 80,5' },
-]
+interface StockData {
+  symbol: string; name: string; price: number; change: number; changePercent: number
+  volume: string; prevClose: number
+}
 
-const hkShareTop = [
-  { rank: 1, name: '小米集團', code: '1810.HK', price: 19.80, pct: +4.21, spark: '0,26 10,24 20,22 30,18 40,20 50,14 60,12 70,8 80,4' },
-  { rank: 2, name: '理想汽車', code: '2015.HK', price: 98.50, pct: +3.68, spark: '0,28 10,24 20,26 30,20 40,18 50,14 60,10 70,8 80,3' },
-  { rank: 3, name: '騰訊控股', code: '0700.HK', price: 348.60, pct: +1.69, spark: '0,22 10,18 20,20 30,14 40,16 50,10 60,12 70,8 80,5' },
-  { rank: 4, name: '阿里巴巴', code: '9988.HK', price: 86.20, pct: +1.59, spark: '0,25 10,20 20,22 30,18 40,15 50,17 60,12 70,10 80,7' },
-  { rank: 5, name: '中國平安', code: '2318.HK', price: 42.35, pct: +1.32, spark: '0,24 10,22 20,20 30,16 40,18 50,14 60,10 70,8 80,6' },
-]
+const stocks = ref<StockData[]>([])
+const loading = ref(true)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+async function fetchWatchlist() {
+  try {
+    const res = await fetch(`/api/stock-quote?symbols=${DEFAULT_WATCHLIST}`)
+    if (res.ok) stocks.value = await res.json()
+  } catch { /* silent */ }
+  loading.value = false
+}
+
+function generateSparkline(price: number, prevClose: number): string {
+  const points: string[] = []
+  const seed = Math.abs(price * 100) | 0
+  let val = prevClose > 0 ? prevClose : price * 0.99
+  for (let i = 0; i <= 8; i++) {
+    const noise = ((seed * (i + 1) * 7 + 13) % 100 - 50) / 500
+    val = val + val * noise
+    if (i === 8) val = price
+    const x = i * 10
+    const range = Math.max(Math.abs(price - (prevClose || price)), price * 0.005) || 1
+    const mid = ((prevClose || price) + price) / 2
+    const y = 15 - ((val - mid) / range) * 12
+    points.push(`${x},${Math.max(1, Math.min(29, y)).toFixed(1)}`)
+  }
+  return points.join(' ')
+}
+
+function formatVolume(vol: string): string {
+  const n = parseFloat(vol)
+  if (isNaN(n) || n === 0) return '--'
+  if (n >= 1e8) return (n / 1e8).toFixed(1) + 'B'
+  if (n >= 1e4) return (n / 1e4).toFixed(1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'
+  return vol
+}
+
+const watchlist = computed(() =>
+  stocks.value.map(s => ({
+    symbol: s.symbol,
+    name: s.name || s.symbol,
+    price: s.price,
+    change: s.change,
+    pct: s.changePercent,
+    volume: formatVolume(s.volume),
+    spark: generateSparkline(s.price, s.prevClose),
+  }))
+)
+
+// Split into HK and non-HK for top movers display
+const hkStocks = computed(() => watchlist.value.filter(s => s.symbol.endsWith('.HK')).sort((a, b) => b.pct - a.pct).slice(0, 5))
+const usStocks = computed(() => watchlist.value.filter(s => !s.symbol.includes('.')).sort((a, b) => b.pct - a.pct).slice(0, 5))
+
+onMounted(() => {
+  fetchWatchlist()
+  pollTimer = setInterval(fetchWatchlist, 30000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
 </script>
 
 <template>
   <div class="space-y-6">
     <h2 class="text-xl font-semibold text-slate-800">{{ t('行情報價', 'Market', '行情报价') }}</h2>
 
-    <!-- Top Movers: A股 + 港股 -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- A股 升幅榜 -->
+    <!-- Top Movers: HK + US -->
+    <div v-if="!loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- HK Top -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <h3 class="text-sm font-semibold text-slate-700">{{ t('A股 升幅榜 Top 5', 'A-Share Top Gainers', 'A股 升幅榜 Top 5') }}</h3>
+          <h3 class="text-sm font-semibold text-slate-700">{{ t('港股排行', 'HK Top Movers', '港股排行') }}</h3>
         </div>
         <div class="divide-y divide-slate-50">
-          <div v-for="s in aShareTop" :key="s.code" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
-            <span class="w-6 text-xs font-bold text-slate-400">{{ s.rank }}</span>
+          <div v-for="(s, idx) in hkStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+            <span class="w-6 text-xs font-bold text-slate-400">{{ idx + 1 }}</span>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-slate-800 truncate">{{ s.name }}</p>
-              <p class="text-xs text-slate-400">{{ s.code }}</p>
+              <p class="text-xs text-slate-400">{{ s.symbol }}</p>
             </div>
             <span class="text-sm font-medium text-slate-700 mx-3">{{ s.price.toFixed(2) }}</span>
             <svg class="w-20 h-8 shrink-0 mx-2" viewBox="0 0 80 30">
@@ -59,20 +102,21 @@ const hkShareTop = [
               {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
             </span>
           </div>
+          <div v-if="hkStocks.length === 0" class="px-4 py-4 text-sm text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
         </div>
       </div>
 
-      <!-- 港股 升幅榜 -->
+      <!-- US Top -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <h3 class="text-sm font-semibold text-slate-700">{{ t('港股 升幅榜 Top 5', 'HK Stock Top Gainers', '港股 升幅榜 Top 5') }}</h3>
+          <h3 class="text-sm font-semibold text-slate-700">{{ t('美股排行', 'US Top Movers', '美股排行') }}</h3>
         </div>
         <div class="divide-y divide-slate-50">
-          <div v-for="s in hkShareTop" :key="s.code" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
-            <span class="w-6 text-xs font-bold text-slate-400">{{ s.rank }}</span>
+          <div v-for="(s, idx) in usStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+            <span class="w-6 text-xs font-bold text-slate-400">{{ idx + 1 }}</span>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium text-slate-800 truncate">{{ s.name }}</p>
-              <p class="text-xs text-slate-400">{{ s.code }}</p>
+              <p class="text-xs text-slate-400">{{ s.symbol }}</p>
             </div>
             <span class="text-sm font-medium text-slate-700 mx-3">{{ s.price.toFixed(2) }}</span>
             <svg class="w-20 h-8 shrink-0 mx-2" viewBox="0 0 80 30">
@@ -82,9 +126,11 @@ const hkShareTop = [
               {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
             </span>
           </div>
+          <div v-if="usStocks.length === 0" class="px-4 py-4 text-sm text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
         </div>
       </div>
     </div>
+    <div v-else class="text-sm text-slate-400 py-4 text-center">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
 
     <!-- Watchlist Tabs -->
     <div class="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
@@ -115,20 +161,26 @@ const hkShareTop = [
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in watchlist" :key="s.symbol" class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
+            <tr v-if="loading">
+              <td colspan="7" class="px-4 py-6 text-center text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</td>
+            </tr>
+            <tr v-else-if="watchlist.length === 0">
+              <td colspan="7" class="px-4 py-6 text-center text-slate-400">{{ t('暫無數據', 'No data', '暂无数据') }}</td>
+            </tr>
+            <tr v-for="s in watchlist" v-else :key="s.symbol" class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
               <td class="px-4 py-3 font-medium text-blue-600">{{ s.symbol }}</td>
               <td class="px-4 py-3 text-slate-600">{{ s.name }}</td>
-              <td class="px-4 py-3 text-right font-medium">{{ s.price.toFixed(2) }}</td>
+              <td class="px-4 py-3 text-right font-medium">{{ s.price > 0 ? s.price.toFixed(2) : '--' }}</td>
               <td class="px-4 py-3 text-center">
-                <svg class="w-20 h-8 inline-block" viewBox="0 0 80 30">
+                <svg v-if="s.price > 0" class="w-20 h-8 inline-block" viewBox="0 0 80 30">
                   <polyline fill="none" :stroke="s.pct >= 0 ? '#22c55e' : '#ef4444'" stroke-width="1.5" :points="s.spark" />
                 </svg>
               </td>
               <td class="px-4 py-3 text-right" :class="s.change >= 0 ? 'text-green-600' : 'text-red-500'">
-                {{ s.change >= 0 ? '+' : '' }}{{ s.change.toFixed(2) }}
+                {{ s.price > 0 ? (s.change >= 0 ? '+' : '') + s.change.toFixed(2) : '--' }}
               </td>
               <td class="px-4 py-3 text-right" :class="s.pct >= 0 ? 'text-green-600' : 'text-red-500'">
-                {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
+                {{ s.price > 0 ? (s.pct >= 0 ? '+' : '') + s.pct.toFixed(2) + '%' : '--' }}
               </td>
               <td class="px-4 py-3 text-right text-slate-500">{{ s.volume }}</td>
             </tr>

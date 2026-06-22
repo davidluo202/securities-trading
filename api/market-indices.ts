@@ -1,0 +1,80 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+
+const INDEX_MAP: Record<string, string> = {
+  HSI: 'hkHSI',
+  SSE: 'sh000001',
+  SZSE: 'sz399001',
+  SPX: 'us.INX',
+  IXIC: 'usIXIC',
+  DJI: 'us.DJI',
+}
+
+interface IndexQuote {
+  symbol: string
+  name: string
+  price: number
+  change: number
+  changePercent: number
+  open: number
+  high: number
+  low: number
+  volume: string
+  prevClose: number
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  if (req.method === 'OPTIONS') return res.status(200).end()
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+
+  const keys = Object.keys(INDEX_MAP)
+  const qqSymbols = Object.values(INDEX_MAP)
+  const url = `https://qt.gtimg.cn/q=${qqSymbols.join(',')}`
+
+  try {
+    const r = await fetch(url)
+    const buffer = await r.arrayBuffer()
+    const decoder = new TextDecoder('gbk')
+    const text = decoder.decode(buffer)
+
+    const results: IndexQuote[] = []
+    const lines = text.split(';').filter(l => l.includes('="'))
+
+    for (let i = 0; i < lines.length; i++) {
+      const match = lines[i].match(/="([^"]*)"/)
+      if (!match || !match[1]) {
+        results.push({ symbol: keys[i] || '', name: '', price: 0, change: 0, changePercent: 0, open: 0, high: 0, low: 0, volume: '', prevClose: 0 })
+        continue
+      }
+      const parts = match[1].split('~')
+      const name = parts[1] || ''
+      const price = parseFloat(parts[3]) || 0
+      const prevClose = parseFloat(parts[4]) || 0
+      const open = parseFloat(parts[5]) || 0
+      const high = parseFloat(parts[33]) || parseFloat(parts[41]) || 0
+      const low = parseFloat(parts[34]) || parseFloat(parts[42]) || 0
+      const volume = parts[6] || parts[36] || '0'
+      const change = price - prevClose
+      const changePercent = prevClose > 0 ? Number((change / prevClose * 100).toFixed(2)) : 0
+
+      results.push({
+        symbol: keys[i] || '',
+        name,
+        price,
+        change: Number(change.toFixed(4)),
+        changePercent,
+        open,
+        high,
+        low,
+        volume,
+        prevClose,
+      })
+    }
+
+    return res.json(results)
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message })
+  }
+}
