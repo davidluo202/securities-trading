@@ -142,14 +142,13 @@ function togglePaper() {
     <!-- Main Content -->
     <div class="flex-1 flex flex-col min-w-0">
       <!-- Top Header -->
-      <header class="h-14 border-b flex items-center justify-between px-4 shrink-0" :class="paperMode ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-slate-200'">
-        <div class="flex items-center gap-3">
-          <button class="lg:hidden p-1.5 rounded hover:bg-slate-100" @click="sidebarOpen = !sidebarOpen">
+      <header class="border-b flex items-center justify-between px-3 shrink-0" :class="paperMode ? 'bg-yellow-300 border-yellow-400 py-2' : 'bg-white border-slate-200 py-2'">
+        <div class="flex items-center gap-2">
+          <button class="lg:hidden p-1.5 rounded" :class="paperMode ? 'hover:bg-yellow-400' : 'hover:bg-slate-100'" @click="sidebarOpen = !sidebarOpen">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <span class="lg:hidden font-semibold text-sm" :class="paperMode ? 'text-yellow-800' : 'text-slate-800'">
-            {{ paperMode ? t('模擬盤', 'Paper', '模拟盘') + ' | ' : '' }}CMF Securities
-          </span>
+          <img :src="sidebarLogo" alt="CM Financial" class="lg:hidden h-8 object-contain" />
+          <span v-if="paperMode" class="lg:hidden text-xs font-bold text-yellow-900 bg-yellow-500/40 px-2 py-0.5 rounded">{{ t('模擬盤', 'Paper', '模拟盘') }}</span>
         </div>
         <div class="flex items-center gap-3">
           <!-- Paper Trade Toggle -->
