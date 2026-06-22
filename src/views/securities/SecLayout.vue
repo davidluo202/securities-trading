@@ -97,12 +97,12 @@ function togglePaper() {
         <img :src="sidebarLogo" alt="CM Financial" class="w-full object-contain" style="margin-top: -15%; margin-bottom: -15%;" />
       </div>
 
-      <!-- Clock + Greeting -->
-      <div class="px-5 py-4 border-b border-slate-700">
-        <div class="text-xs text-slate-400 mb-1">🕐 {{ dateString }} {{ timeString }}</div>
+      <!-- Clock + Greeting (yellow bg in paper mode) -->
+      <div class="px-5 py-4 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
+        <div class="text-xs mb-1" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
         <div class="text-lg font-bold text-white">{{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！</div>
-        <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 text-xs font-medium text-center">
-          {{ t('模擬盤模式', 'Paper Trade Mode', '模拟盘模式') }}
+        <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
+          {{ t('⚠ 模擬盤模式', '⚠ Paper Trade Mode', '⚠ 模拟盘模式') }}
         </div>
       </div>
 
@@ -127,27 +127,29 @@ function togglePaper() {
         </RouterLink>
       </nav>
 
-      <!-- Logout + Version -->
-      <div class="border-t border-slate-700 p-3">
+      <!-- Logout + Version (high contrast) -->
+      <div class="border-t border-slate-600 p-3 bg-slate-900/50">
         <button
-          class="w-full text-left px-5 py-3 text-base text-slate-300 hover:bg-slate-700 rounded-lg"
+          class="w-full text-left px-4 py-2.5 text-base text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600 hover:border-red-500 transition-colors"
           @click="logout"
         >
-          {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
+          🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-xs text-white font-semibold mt-2">v260622.008</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260622.009</div>
       </div>
     </aside>
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col min-w-0">
       <!-- Top Header -->
-      <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0">
+      <header class="h-14 border-b flex items-center justify-between px-4 shrink-0" :class="paperMode ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-slate-200'">
         <div class="flex items-center gap-3">
           <button class="lg:hidden p-1.5 rounded hover:bg-slate-100" @click="sidebarOpen = !sidebarOpen">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <span class="lg:hidden font-semibold text-sm text-slate-800">CMF Securities</span>
+          <span class="lg:hidden font-semibold text-sm" :class="paperMode ? 'text-yellow-800' : 'text-slate-800'">
+            {{ paperMode ? t('模擬盤', 'Paper', '模拟盘') + ' | ' : '' }}CMF Securities
+          </span>
         </div>
         <div class="flex items-center gap-3">
           <!-- Paper Trade Toggle -->
@@ -193,23 +195,47 @@ function togglePaper() {
       <!-- Mobile Sidebar Overlay -->
       <div v-if="sidebarOpen" class="lg:hidden fixed inset-0 z-40">
         <div class="absolute inset-0 bg-black/40" @click="sidebarOpen = false" />
-        <aside class="absolute left-0 top-0 bottom-0 w-60 bg-[#0f172a] text-white">
-          <div class="px-5 py-5 border-b border-slate-700">
-            <h1 class="text-lg font-bold">CMF Securities</h1>
+        <aside class="absolute left-0 top-0 bottom-0 w-64 bg-[#0f172a] text-white flex flex-col">
+          <!-- Mobile Logo -->
+          <div class="px-3 py-1 bg-slate-100 mx-2 mt-2 rounded-lg overflow-hidden" style="max-height: 70px;">
+            <img :src="sidebarLogo" alt="CM Financial" class="w-full object-contain" style="margin-top: -15%; margin-bottom: -15%;" />
           </div>
-          <nav class="py-3">
+          <!-- Mobile Greeting -->
+          <div class="px-4 py-3 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
+            <div class="text-xs" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
+            <div class="text-base font-bold text-white mt-1">{{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！</div>
+            <div v-if="paperMode" class="mt-1 px-2 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
+              {{ t('⚠ 模擬盤', '⚠ Paper', '⚠ 模拟盘') }}
+            </div>
+          </div>
+          <!-- Mobile Nav -->
+          <nav class="flex-1 py-2 overflow-y-auto">
             <RouterLink
               v-for="item in navItems"
               :key="item.key"
               :to="item.route"
-              class="flex items-center gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-slate-800"
-              :class="isActive(item.route) ? 'bg-slate-800 border-l-3 border-blue-500 text-white' : 'text-slate-300 border-l-3 border-transparent'"
+              :class="[
+                'w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors',
+                isActive(item.route)
+                  ? 'bg-blue-600/20 text-white border-l-4 border-blue-400'
+                  : 'text-slate-300 hover:bg-slate-700/50 border-l-4 border-transparent'
+              ]"
               @click="sidebarOpen = false"
             >
-              <span class="text-base">{{ item.icon }}</span>
-              <span>{{ item.label }}</span>
+              <span class="text-lg">{{ item.icon }}</span>
+              <span>
+                <span class="block font-semibold text-sm">{{ item.label }}</span>
+                <span class="block text-[10px] opacity-60">{{ item.labelEn }}</span>
+              </span>
             </RouterLink>
           </nav>
+          <!-- Mobile Logout -->
+          <div class="border-t border-slate-600 p-3 bg-slate-900/50">
+            <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
+              🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
+            </button>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260622.009</div>
+          </div>
         </aside>
       </div>
 
