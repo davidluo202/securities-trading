@@ -93,7 +93,7 @@ function togglePaper() {
     <!-- Desktop Sidebar -->
     <aside class="hidden lg:flex flex-col w-60 bg-[#0f172a] text-white shrink-0">
       <div class="px-5 py-4 border-b border-slate-700">
-        <img :src="sidebarLogo" alt="CM Financial" class="h-10 mb-3" />
+        <img :src="sidebarLogo" alt="CM Financial" class="w-full mb-3" />
         <p class="text-sm text-slate-200">{{ greeting }}，<span class="font-semibold">{{ userName }}</span></p>
         <div class="flex items-center gap-2 mt-1">
           <span class="text-xl font-mono font-bold text-white">{{ timeString }}</span>
@@ -120,7 +120,7 @@ function togglePaper() {
           <span>🚪</span>
           <span>{{ t('退出登入', 'Logout', '退出登录') }}</span>
         </button>
-        <p class="text-xs text-slate-600 mt-2">v260622.005</p>
+        <p class="text-xs text-white font-semibold mt-2">v260622.006</p>
       </div>
     </aside>
 
