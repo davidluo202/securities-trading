@@ -8,7 +8,7 @@ const router = useRouter()
 const { t, setLang, langLabel, langMode } = useLanguage()
 const sidebarOpen = ref(false)
 const langDropdown = ref(false)
-const paperMode = ref(false)
+const paperMode = ref(localStorage.getItem('sec-trade-mode') === 'paper')
 
 const navItems = computed(() => [
   { key: 'dashboard', icon: '📊', label: t('總覽', 'Dashboard', '总览'), route: '/sec/dashboard' },
@@ -48,8 +48,12 @@ function togglePaper() {
     <!-- Desktop Sidebar -->
     <aside class="hidden lg:flex flex-col w-60 bg-[#0f172a] text-white shrink-0">
       <div class="px-5 py-5 border-b border-slate-700">
+        <img src="/logo-en-white.jpg" alt="CM Financial" class="h-8 mb-2" />
         <h1 class="text-lg font-bold tracking-wide">CMF Securities</h1>
         <p class="text-xs text-slate-400 mt-0.5">{{ t('證券交易系統', 'Trading System', '证券交易系统') }}</p>
+        <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 text-xs font-medium text-center">
+          {{ t('模擬盤', 'Paper', '模拟盘') }}
+        </div>
       </div>
       <nav class="flex-1 py-3 overflow-y-auto">
         <RouterLink
@@ -116,7 +120,7 @@ function togglePaper() {
 
       <!-- Paper Mode Banner -->
       <div v-if="paperMode" class="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-sm text-yellow-800 font-medium">
-        {{ t('模擬交易模式 - 使用虛擬資金', 'Paper Trading Mode - Using Virtual Funds', '模拟交易模式 - 使用虚拟资金') }}
+        {{ t('模擬交易模式 Paper Trade Mode', 'Paper Trade Mode', '模拟交易模式 Paper Trade Mode') }}
       </div>
 
       <!-- Mobile Sidebar Overlay -->

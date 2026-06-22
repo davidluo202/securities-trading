@@ -9,6 +9,11 @@ const router = createRouter({
       redirect: '/sec/dashboard',
     },
     {
+      path: '/sec/login',
+      name: 'login',
+      component: () => import('../views/securities/SecLogin.vue'),
+    },
+    {
       path: '/sec',
       component: SecLayout,
       redirect: '/sec/dashboard',
@@ -25,6 +30,17 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+router.beforeEach((to, _from, next) => {
+  const isAuthenticated = localStorage.getItem('sec-authenticated') === 'true'
+  if (to.name !== 'login' && !isAuthenticated) {
+    next({ name: 'login' })
+  } else if (to.name === 'login' && isAuthenticated) {
+    next('/sec/dashboard')
+  } else {
+    next()
+  }
 })
 
 export default router
