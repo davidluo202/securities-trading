@@ -71,8 +71,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Resend API error:', errorData);
-      return res.status(500).json({ error: 'Failed to send verification code' });
+      console.error('Resend API error:', response.status, errorData);
+      return res.status(500).json({ error: 'Failed to send verification code', detail: errorData });
     }
 
     return res.status(200).json({ success: true, token });
