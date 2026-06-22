@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLanguage, type LangMode } from '../../composables/useLanguage'
 
@@ -9,6 +9,51 @@ const { t, setLang, langLabel, langMode } = useLanguage()
 const sidebarOpen = ref(false)
 const langDropdown = ref(false)
 const paperMode = ref(localStorage.getItem('sec-trade-mode') === 'paper')
+
+// Dynamic logo based on language
+const sidebarLogo = computed(() => {
+  if (langMode.value === 'en' || langMode.value === 'bilingual') return '/logo-en-black.jpg'
+  return '/logo-zh.jpg'
+})
+
+// Time greeting
+const currentTime = ref(new Date())
+let clockTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  clockTimer = setInterval(() => { currentTime.value = new Date() }, 1000)
+})
+onUnmounted(() => { if (clockTimer) clearInterval(clockTimer) })
+
+const greeting = computed(() => {
+  const h = currentTime.value.getHours()
+  if (h < 6) return t('凌晨好', 'Good evening', '凌晨好')
+  if (h < 12) return t('早上好', 'Good morning', '早上好')
+  if (h < 14) return t('午安', 'Good afternoon', '午安')
+  if (h < 18) return t('下午好', 'Good afternoon', '下午好')
+  return t('晚上好', 'Good evening', '晚上好')
+})
+
+const userName = computed(() => {
+  // TODO: get from auth store
+  return 'David'
+})
+
+const timeString = computed(() => {
+  return currentTime.value.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
+const dateString = computed(() => {
+  return currentTime.value.toLocaleDateString(langMode.value === 'en' ? 'en-US' : 'zh-CN', {
+    year: 'numeric', month: 'short', day: 'numeric', weekday: 'short'
+  })
+})
+
+function logout() {
+  localStorage.removeItem('sec-authenticated')
+  localStorage.removeItem('sec-trade-mode')
+  router.push('/sec/login')
+}
 
 const navItems = computed(() => [
   { key: 'dashboard', icon: '📊', label: t('總覽', 'Dashboard', '总览'), route: '/sec/dashboard' },
@@ -47,12 +92,15 @@ function togglePaper() {
   <div class="flex h-screen bg-slate-50">
     <!-- Desktop Sidebar -->
     <aside class="hidden lg:flex flex-col w-60 bg-[#0f172a] text-white shrink-0">
-      <div class="px-5 py-5 border-b border-slate-700">
-        <img src="/logo-en-white.jpg" alt="CM Financial" class="h-8 mb-2" />
-        <h1 class="text-lg font-bold tracking-wide">CMF Securities</h1>
-        <p class="text-xs text-slate-400 mt-0.5">{{ t('證券交易系統', 'Trading System', '证券交易系统') }}</p>
+      <div class="px-5 py-4 border-b border-slate-700">
+        <img :src="sidebarLogo" alt="CM Financial" class="h-10 mb-3" />
+        <p class="text-sm text-slate-200">{{ greeting }}，<span class="font-semibold">{{ userName }}</span></p>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xl font-mono font-bold text-white">{{ timeString }}</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">{{ dateString }}</p>
         <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 text-xs font-medium text-center">
-          {{ t('模擬盤', 'Paper', '模拟盘') }}
+          {{ t('模擬盤', 'Paper Trade', '模拟盘') }}
         </div>
       </div>
       <nav class="flex-1 py-3 overflow-y-auto">
@@ -67,8 +115,12 @@ function togglePaper() {
           <span>{{ item.label }}</span>
         </RouterLink>
       </nav>
-      <div class="px-5 py-4 border-t border-slate-700 text-xs text-slate-500">
-        v260622.001
+      <div class="px-5 py-3 border-t border-slate-700">
+        <button @click="logout" class="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors w-full">
+          <span>🚪</span>
+          <span>{{ t('退出登入', 'Logout', '退出登录') }}</span>
+        </button>
+        <p class="text-xs text-slate-600 mt-2">v260622.005</p>
       </div>
     </aside>
 
