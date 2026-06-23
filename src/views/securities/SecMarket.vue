@@ -131,16 +131,29 @@ function toDisplayItem(s: StockData) {
 
 const allItems = computed(() => stocks.value.map(toDisplayItem))
 
-// Top movers by market (sorted by changePercent descending, top 5)
-const aShareTop = computed(() =>
-  allItems.value.filter(s => s.symbol.endsWith('.SH') || s.symbol.endsWith('.SZ')).sort((a, b) => b.pct - a.pct).slice(0, 5)
-)
-const hkTop = computed(() =>
-  allItems.value.filter(s => s.symbol.endsWith('.HK')).sort((a, b) => b.pct - a.pct).slice(0, 5)
-)
-const usTop = computed(() =>
-  allItems.value.filter(s => !s.symbol.includes('.')).sort((a, b) => b.pct - a.pct).slice(0, 5)
-)
+// Top movers from API (real market rankings)
+const aShareTop = ref<any[]>([])
+const hkTop = ref<any[]>([])
+const usTop = ref<any[]>([])
+const moversLoading = ref(true)
+
+async function fetchTopMovers() {
+  moversLoading.value = true
+  try {
+    const [aRes, hkRes, usRes] = await Promise.all([
+      fetch('/api/top-movers?market=a'),
+      fetch('/api/top-movers?market=hk'),
+      fetch('/api/top-movers?market=us'),
+    ])
+    const aData = await aRes.json()
+    const hkData = await hkRes.json()
+    const usData = await usRes.json()
+    aShareTop.value = (aData.items || []).map((i: any) => ({ symbol: i.symbol, name: i.name, price: i.price, pct: i.changePercent, spark: '' }))
+    hkTop.value = (hkData.items || []).map((i: any) => ({ symbol: i.symbol, name: i.name, price: i.price, pct: i.changePercent, spark: '' }))
+    usTop.value = (usData.items || []).map((i: any) => ({ symbol: i.symbol, name: i.name, price: i.price, pct: i.changePercent, spark: '' }))
+  } catch { /* silent */ }
+  moversLoading.value = false
+}
 
 // Watchlist: only symbols from user's watchlist / fallback
 const watchlist = computed(() => {
@@ -151,7 +164,8 @@ const watchlist = computed(() => {
 onMounted(() => {
   fetchAll()
   fetchSparklines()
-  pollTimer = setInterval(fetchAll, 30000)
+  fetchTopMovers()
+  pollTimer = setInterval(() => { fetchAll(); fetchTopMovers() }, 30000)
 })
 
 onUnmounted(() => {
@@ -203,7 +217,7 @@ onUnmounted(() => {
                 {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
               </span>
             </div>
-            <div v-if="aShareTop.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
+            <div v-if="aShareTop.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('今日暫無上漲標的', 'No gainers today', '今日暂无上涨标的') }}</div>
           </div>
         </div>
 
@@ -227,7 +241,7 @@ onUnmounted(() => {
                 {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
               </span>
             </div>
-            <div v-if="hkTop.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
+            <div v-if="hkTop.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('今日暫無上漲標的', 'No gainers today', '今日暂无上涨标的') }}</div>
           </div>
         </div>
 
@@ -251,7 +265,7 @@ onUnmounted(() => {
                 {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
               </span>
             </div>
-            <div v-if="usTop.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
+            <div v-if="usTop.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('今日暫無上漲標的', 'No gainers today', '今日暂无上涨标的') }}</div>
           </div>
         </div>
       </div>
@@ -279,7 +293,7 @@ onUnmounted(() => {
                 <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</td>
               </tr>
               <tr v-else-if="watchlist.length === 0">
-                <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('暫無數據', 'No data', '暂无数据') }}</td>
+                <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('暫無自選股，請在交易頁面添加', 'No watchlist stocks. Add from trading page.', '暂无自选股，请在交易页面添加') }}</td>
               </tr>
               <tr v-for="(s, idx) in watchlist" v-else :key="s.symbol" class="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" :class="idx % 2 === 1 ? 'bg-slate-50/50' : ''" @click="goStock(s.symbol)">
                 <td class="px-6 py-4 font-bold text-blue-700">{{ s.symbol }}</td>
