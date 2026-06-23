@@ -32,8 +32,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }).slice(0, 5)
     } else if (market === 'hk') {
-      // Use Tencent quotes for a list of popular HK stocks, sort by change%
-      const symbols = 'hk00700,hk09988,hk09618,hk01810,hk00388,hk02318,hk03690,hk00005,hk00941,hk01024,hk09999,hk00175,hk02269,hk00027,hk01211,hk00883,hk09888,hk02020,hk01299,hk00016'
+      // Tencent quotes for 40+ popular HK stocks, sort by change% to get real top gainers
+      const symbols = 'hk00700,hk09988,hk09618,hk01810,hk00388,hk02318,hk03690,hk00005,hk00941,hk01024,hk09999,hk00175,hk02269,hk00027,hk01211,hk00883,hk09888,hk02020,hk01299,hk00016,hk02382,hk01833,hk06060,hk00669,hk01177,hk02628,hk03988,hk01398,hk00857,hk00386,hk02601,hk03968,hk01288,hk00981,hk02388,hk01109,hk00267,hk06618,hk01928,hk01876,hk00241,hk02007,hk06862,hk09626,hk01347,hk02015,hk09961,hk09698,hk01797,hk00020'
       const url = `https://qt.gtimg.cn/q=${symbols}`
       const r = await fetch(url)
       const buf = await r.arrayBuffer()
@@ -54,8 +54,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .sort((a: any, b: any) => b.changePercent - a.changePercent)
         .slice(0, 5)
     } else if (market === 'us') {
-      // Use Tencent quotes for popular US stocks
-      const symbols = 'usAAPL,usTSLA,usNVDA,usMSFT,usGOOGL,usAMZN,usMETA,usNFLX,usPDD,usBABA,usJD,usNIO,usBIDU,usXPEV,usLI'
+      // Tencent quotes for 30+ US stocks, use latest close data
+      const symbols = 'usAAPL,usTSLA,usNVDA,usMSFT,usGOOGL,usAMZN,usMETA,usNFLX,usPDD,usBABA,usJD,usNIO,usBIDU,usXPEV,usLI,usCOIN,usPLTR,usSOFI,usAMD,usINTC,usTSM,usCRM,usORCL,usABBV,usV,usMA,usJPM,usGS,usWMT,usCOST'
       const url = `https://qt.gtimg.cn/q=${symbols}`
       const r = await fetch(url)
       const buf = await r.arrayBuffer()
