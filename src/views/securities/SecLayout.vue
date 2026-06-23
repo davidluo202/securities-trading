@@ -12,13 +12,14 @@ const paperMode = ref(localStorage.getItem('sec-trade-mode') === 'paper')
 
 // Font size toggle
 const fontSizes = [
-  { label: '小', size: '14px' },
-  { label: '中', size: '16px' },
-  { label: '大', size: '20px' },
+  { label: '小', size: '16px' },
+  { label: '中', size: '18px' },
+  { label: '大', size: '22px' },
+  { label: '特大', size: '26px' },
 ]
 const fontSizeIndex = ref((() => {
   const saved = localStorage.getItem('sec-font-size-index')
-  return saved ? parseInt(saved) : 1
+  return saved ? parseInt(saved) : 0
 })())
 function applyFontSize() {
   document.documentElement.style.fontSize = fontSizes[fontSizeIndex.value].size
@@ -29,8 +30,17 @@ function cycleFontSize() {
   applyFontSize()
 }
 
-// Notification bell
-const unreadCount = ref(3)
+// Notification bell - read unread count from localStorage
+const NOTIF_TOTAL = 5
+const DEFAULT_READ_IDS = ['1', '3']
+const unreadCount = ref(0)
+
+function refreshUnreadCount() {
+  const saved = localStorage.getItem('sec-notif-read')
+  const readIds: string[] = saved ? JSON.parse(saved) : DEFAULT_READ_IDS
+  unreadCount.value = Math.max(0, NOTIF_TOTAL - readIds.length)
+}
+let notifTimer: ReturnType<typeof setInterval> | null = null
 
 // Dynamic logo based on language
 const sidebarLogo = computed(() => {
@@ -47,8 +57,13 @@ onMounted(() => {
   applyFontSize()
   loadWeather()
   setInterval(loadWeather, 600000) // refresh weather every 10 min
+  refreshUnreadCount()
+  notifTimer = setInterval(refreshUnreadCount, 2000)
 })
-onUnmounted(() => { if (clockTimer) clearInterval(clockTimer) })
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
+  if (notifTimer) clearInterval(notifTimer)
+})
 
 const greeting = computed(() => {
   const h = currentTime.value.getHours()
@@ -97,7 +112,14 @@ const dateString = computed(() => {
 function logout() {
   localStorage.removeItem('sec-authenticated')
   localStorage.removeItem('sec-trade-mode')
-  router.push('/sec/login')
+  localStorage.removeItem('sec-font-size-index')
+  router.push('/sec/login').catch(() => {
+    window.location.href = '/sec/login'
+  })
+}
+
+function goToNotifications() {
+  router.push('/sec/notifications')
 }
 
 const navItems = computed(() => [
@@ -172,7 +194,7 @@ const langs: { mode: LangMode; label: string }[] = [
         >
           🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.002</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.003</div>
       </div>
     </aside>
 
@@ -222,7 +244,7 @@ const langs: { mode: LangMode; label: string }[] = [
           </div>
 
           <!-- Notification Bell -->
-          <button class="relative px-2 py-2 rounded hover:bg-slate-100" :title="t('通知', 'Notifications', '通知')">
+          <button class="relative px-2 py-2 rounded hover:bg-slate-100" :title="t('通知', 'Notifications', '通知')" @click="goToNotifications">
             <span class="text-lg">&#x1F514;</span>
             <span v-if="unreadCount > 0" class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{{ unreadCount }}</span>
           </button>
@@ -276,7 +298,7 @@ const langs: { mode: LangMode; label: string }[] = [
             <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
               🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
             </button>
-            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.002</div>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.003</div>
           </div>
         </aside>
       </div>

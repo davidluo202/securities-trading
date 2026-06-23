@@ -28,6 +28,7 @@ const router = createRouter({
         { path: 'history', name: 'history', component: () => import('../views/securities/SecHistory.vue') },
         { path: 'settings', name: 'settings', component: () => import('../views/securities/SecSettings.vue') },
         { path: 'stock/:symbol', name: 'stock-detail', component: () => import('../views/securities/SecStockDetail.vue') },
+        { path: 'notifications', name: 'notifications', component: () => import('../views/securities/SecNotifications.vue') },
       ],
     },
   ],

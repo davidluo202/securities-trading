@@ -198,15 +198,24 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
     <!-- Search Bar -->
     <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100 relative" @click.stop>
       <div class="flex items-center gap-3">
-        <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        <input
-          v-model="searchQuery"
-          type="text"
-          :placeholder="t('輸入股票代碼或名稱拼音首字母', 'Enter stock code or pinyin initials', '输入股票代码或名称拼音首字母')"
-          class="flex-1 text-sm outline-none text-slate-700 placeholder-slate-400"
-          @input="onSearchInput"
-          @focus="showResults = searchResults.length > 0"
-        />
+        <div class="flex max-w-md border-2 border-slate-400 rounded-lg overflow-hidden">
+          <input
+            v-model="searchQuery"
+            type="text"
+            :placeholder="t('輸入股票代碼或名稱拼音首字母', 'Enter stock code or pinyin initials', '输入股票代码或名称拼音首字母')"
+            class="flex-1 text-sm outline-none text-slate-700 placeholder-slate-400 px-3 py-2"
+            @input="onSearchInput"
+            @keydown.enter="onSearchInput"
+            @focus="showResults = searchResults.length > 0"
+          />
+          <button
+            class="px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            @click="onSearchInput"
+            :title="t('搜索', 'Search', '搜索')"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </button>
+        </div>
         <button
           v-if="selectedStock"
           class="text-xs px-3 py-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium whitespace-nowrap"
