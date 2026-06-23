@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useLanguage } from '../../composables/useLanguage'
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, type IChartApi, type ISeriesApi } from 'lightweight-charts'
 
@@ -53,9 +53,11 @@ function selectStock(item: { symbol: string; name: string }) {
 
 // Toast
 const toastMsg = ref('')
+const toastType = ref<'success' | 'error'>('success')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
-function showToast(msg: string) {
+function showToast(msg: string, type: 'success' | 'error' = 'success') {
   toastMsg.value = msg
+  toastType.value = type
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toastMsg.value = '' }, 2000)
 }
@@ -70,7 +72,7 @@ function addToWatchlist() {
   list = list.filter(s => s.symbol !== selectedStock.value!.symbol)
   list.unshift({ symbol: selectedStock.value.symbol, name: selectedStock.value.name })
   localStorage.setItem('sec-watchlist', JSON.stringify(list))
-  showToast('已加入自選股 ✓')
+  showToast(t('已加入自選股', 'Added to watchlist', '已加入自选股'))
 }
 
 // Chart
@@ -222,9 +224,15 @@ const orderSide = ref<'buy' | 'sell'>('buy')
 const orderType = ref('limit')
 const quantity = ref(100)
 const price = ref(0)
+const shortSell = ref(false)
 
 watch(quote, (q) => {
   if (q && q.price > 0) price.value = q.price
+})
+
+// Reset short sell when switching to buy
+watch(orderSide, (side) => {
+  if (side === 'buy') shortSell.value = false
 })
 
 const orderTypes = [
@@ -234,26 +242,163 @@ const orderTypes = [
   { value: 'stop-limit', label: () => t('止損限價', 'Stop Limit', '止损限价') },
 ]
 
+// Buying power
+const buyingPower = computed(() => {
+  const raw = localStorage.getItem('sec-buying-power')
+  if (raw !== null) return parseFloat(raw) || 0
+  return paperMode.value ? 1000000 : 0
+})
+
+// Effective price for calculations
+const effectivePrice = computed(() => {
+  if (orderType.value === 'market' && quote.value?.price > 0) return quote.value.price
+  return price.value
+})
+
+// Estimated fees
+const estFees = computed(() => {
+  return Math.max(50, quantity.value * effectivePrice.value * 0.001)
+})
+
+// Estimated total for buy
+const estTotal = computed(() => {
+  return quantity.value * effectivePrice.value + estFees.value
+})
+
+// Insufficient balance check
+const insufficientBalance = computed(() => {
+  if (orderSide.value !== 'buy') return false
+  return estTotal.value > buyingPower.value
+})
+
+// Currency prefix
+const currencyPrefix = computed(() => {
+  const sym = selectedStock.value?.symbol || ''
+  if (sym.endsWith('.SH') || sym.endsWith('.SZ')) return 'CNY'
+  if (sym.endsWith('.HK')) return 'HK$'
+  return 'US$'
+})
+
+// Holdings for sell side
+const currentHoldings = computed(() => {
+  if (!selectedStock.value) return 0
+  try {
+    const raw = localStorage.getItem('sec-holdings')
+    if (!raw) return 0
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return 0
+    const found = arr.find((h: any) => h.symbol === selectedStock.value!.symbol)
+    return found ? (found.quantity || 0) : 0
+  } catch { return 0 }
+})
+
+// Is A-share (no short selling for A-shares)
+const isAShare = computed(() => {
+  const sym = selectedStock.value?.symbol || ''
+  return sym.endsWith('.SH') || sym.endsWith('.SZ')
+})
+
+// Short sell authorization
+const hasShortAuth = computed(() => {
+  return localStorage.getItem('sec-short-auth') === 'true'
+})
+
+// Can submit sell
+const canSubmitSell = computed(() => {
+  if (currentHoldings.value > 0) return true
+  if (!isAShare.value && shortSell.value && hasShortAuth.value) return true
+  return false
+})
+
+// Can submit buy
+const canSubmitBuy = computed(() => {
+  return !insufficientBalance.value && quantity.value > 0 && effectivePrice.value > 0
+})
+
+// Generate order reference
+function generateOrderRef(): string {
+  const sym = selectedStock.value?.symbol || ''
+  let prefix = 'EXTH' // default HK
+  if (sym.endsWith('.SH') || sym.endsWith('.SZ')) prefix = 'EXTA'
+  else if (!sym.includes('.')) prefix = 'EXTU'
+
+  const now = new Date()
+  const yy = String(now.getFullYear()).slice(2)
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const seq = String(Math.floor(Math.random() * 999999)).padStart(6, '0')
+  return `${prefix}-${yy}${mm}${dd}-${seq}`
+}
+
 function submitOrder() {
   if (!selectedStock.value || !quote.value) return
+
+  // Validate
+  if (orderSide.value === 'buy' && !canSubmitBuy.value) return
+  if (orderSide.value === 'sell' && !canSubmitSell.value) return
+
+  const orderPrice = orderType.value === 'market' ? quote.value.price : price.value
+  const orderRef = generateOrderRef()
+
   const order = {
-    id: Date.now().toString(),
+    orderRef,
     symbol: selectedStock.value.symbol,
     name: selectedStock.value.name,
     side: orderSide.value,
     type: orderType.value,
     quantity: quantity.value,
-    price: orderType.value === 'market' ? quote.value.price : price.value,
+    price: orderPrice,
     paper: paperMode.value,
-    time: new Date().toISOString(),
-    status: 'pending',
+    status: paperMode.value ? 'filled' : 'pending_review',
+    timestamp: new Date().toISOString(),
+    shortSell: orderSide.value === 'sell' && shortSell.value,
   }
+
+  // Save order
   const orders: any[] = JSON.parse(localStorage.getItem('sec-orders') || '[]')
   orders.unshift(order)
   localStorage.setItem('sec-orders', JSON.stringify(orders))
-  showToast(paperMode.value ? '模擬訂單已提交' : '訂單已提交')
+
+  // Paper mode: immediately execute
+  if (paperMode.value) {
+    if (orderSide.value === 'buy') {
+      // Deduct buying power
+      const newBp = buyingPower.value - (quantity.value * orderPrice + estFees.value)
+      localStorage.setItem('sec-buying-power', String(Math.max(0, newBp)))
+
+      // Update holdings
+      const holdings: any[] = JSON.parse(localStorage.getItem('sec-holdings') || '[]')
+      const idx = holdings.findIndex((h: any) => h.symbol === selectedStock.value!.symbol)
+      if (idx >= 0) {
+        holdings[idx].quantity += quantity.value
+        holdings[idx].avgCost = ((holdings[idx].avgCost * (holdings[idx].quantity - quantity.value)) + (orderPrice * quantity.value)) / holdings[idx].quantity
+      } else {
+        holdings.push({ symbol: selectedStock.value.symbol, name: selectedStock.value.name, quantity: quantity.value, avgCost: orderPrice })
+      }
+      localStorage.setItem('sec-holdings', JSON.stringify(holdings))
+    } else {
+      // Sell: add proceeds to buying power
+      if (!shortSell.value) {
+        const proceeds = quantity.value * orderPrice - estFees.value
+        const newBp = buyingPower.value + proceeds
+        localStorage.setItem('sec-buying-power', String(newBp))
+
+        // Reduce holdings
+        const holdings: any[] = JSON.parse(localStorage.getItem('sec-holdings') || '[]')
+        const idx = holdings.findIndex((h: any) => h.symbol === selectedStock.value!.symbol)
+        if (idx >= 0) {
+          holdings[idx].quantity -= quantity.value
+          if (holdings[idx].quantity <= 0) holdings.splice(idx, 1)
+          localStorage.setItem('sec-holdings', JSON.stringify(holdings))
+        }
+      }
+    }
+  }
+
+  showToast(t('交易已成功下單', 'Order placed successfully', '交易已成功下单'))
   quantity.value = 100
   price.value = quote.value.price
+  shortSell.value = false
 }
 
 function onBodyClick() {
@@ -266,7 +411,8 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
 <template>
   <div class="space-y-6">
     <!-- Toast -->
-    <div v-if="toastMsg" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-8 py-3 rounded-xl shadow-lg text-base font-bold">
+    <div v-if="toastMsg" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-8 py-3 rounded-xl shadow-lg text-base font-bold text-white"
+      :class="toastType === 'success' ? 'bg-emerald-600' : 'bg-red-600'">
       {{ toastMsg }}
     </div>
 
@@ -277,7 +423,7 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
           <input
             v-model="searchQuery"
             type="text"
-            :placeholder="t('輸入股票代碼或名稱拼音首字母', 'Enter stock code or pinyin initials', '输入股票代码或名称拼音首字母')"
+            :placeholder="t('輸入股票代碼或名稱 (HK .HK / A股 .SH .SZ / 美股)', 'Enter stock code (HK .HK / A-share .SH .SZ / US)', '输入股票代码或名称 (HK .HK / A股 .SH .SZ / 美股)')"
             class="flex-1 text-base outline-none text-slate-700 placeholder-slate-400 px-4 py-3"
             @input="onSearchInput"
             @keydown.enter="onSearchInput"
@@ -380,6 +526,18 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
           </div>
 
           <div class="p-6 space-y-5">
+            <!-- Buy: Buying Power -->
+            <div v-if="orderSide === 'buy'" class="bg-emerald-50 rounded-xl px-4 py-3">
+              <span class="text-xs text-emerald-600 block mb-1">{{ t('可用購買力 / Buying Power', 'Buying Power', '可用购买力 / Buying Power') }}</span>
+              <span class="text-lg font-bold text-emerald-700">{{ currencyPrefix }} {{ buyingPower.toLocaleString('en', { minimumFractionDigits: 2 }) }}</span>
+            </div>
+
+            <!-- Sell: Current Holdings -->
+            <div v-if="orderSide === 'sell'" class="bg-blue-50 rounded-xl px-4 py-3">
+              <span class="text-xs text-blue-600 block mb-1">{{ t('當前持倉 / Current Holdings', 'Current Holdings', '当前持仓 / Current Holdings') }}</span>
+              <span class="text-lg font-bold text-blue-700">{{ currentHoldings }} {{ t('股', 'shares', '股') }}</span>
+            </div>
+
             <!-- Order Type -->
             <div>
               <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('委託類型', 'Order Type', '委托类型') }}</label>
@@ -411,25 +569,54 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
               </div>
             </div>
 
+            <!-- Short Sell Checkbox (sell side, HK/US only) -->
+            <div v-if="orderSide === 'sell' && !isAShare" class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" v-model="shortSell" class="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500" />
+                <span class="text-sm font-semibold text-slate-700">{{ t('賣空 / Short Sell', 'Short Sell', '卖空 / Short Sell') }}</span>
+              </label>
+              <span v-if="shortSell && !hasShortAuth" class="text-xs text-red-500 font-medium">{{ t('未授權', 'Not authorized', '未授权') }}</span>
+            </div>
+            <!-- Short sell warning -->
+            <div v-if="orderSide === 'sell' && shortSell && hasShortAuth" class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 font-medium">
+              {{ t('借券安排，需在T+2日內歸還', 'Securities borrowing, must return within T+2', '借券安排，需在T+2日内归还') }}
+            </div>
+
             <!-- Order Summary -->
             <div class="bg-slate-50 rounded-xl p-4 space-y-2.5">
               <div class="flex justify-between text-sm text-slate-500">
-                <span>{{ t('預估金額', 'Est. Amount', '预估金额') }}</span>
-                <span class="text-slate-800 font-bold">{{ quote?.symbol?.endsWith('.HK') ? 'HK' : 'US' }}$ {{ (quantity * price).toLocaleString('en', { minimumFractionDigits: 2 }) }}</span>
+                <span>{{ t('預估買入金額 / Est. Total', 'Est. Total', '预估买入金额 / Est. Total') }}</span>
+                <span class="text-slate-800 font-bold">{{ currencyPrefix }} {{ estTotal.toLocaleString('en', { minimumFractionDigits: 2 }) }}</span>
               </div>
               <div class="flex justify-between text-sm text-slate-500">
                 <span>{{ t('佣金', 'Commission', '佣金') }}</span>
-                <span class="text-slate-700 font-medium">~{{ quote?.symbol?.endsWith('.HK') ? 'HK' : 'US' }}$ {{ Math.max(50, quantity * price * 0.001).toFixed(2) }}</span>
+                <span class="text-slate-700 font-medium">~{{ currencyPrefix }} {{ estFees.toFixed(2) }}</span>
               </div>
+            </div>
+
+            <!-- Insufficient balance warning -->
+            <div v-if="orderSide === 'buy' && insufficientBalance" class="text-sm font-bold text-red-600 text-center">
+              {{ t('餘額不足', 'Insufficient balance', '余额不足') }}
             </div>
 
             <!-- Submit -->
             <button
-              class="w-full py-4 rounded-xl text-white font-bold text-base shadow-sm hover:shadow transition-all"
-              :class="orderSide === 'buy' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'"
+              v-if="orderSide === 'buy'"
+              class="w-full py-4 rounded-xl text-white font-bold text-base shadow-sm transition-all"
+              :class="canSubmitBuy ? 'bg-emerald-600 hover:bg-emerald-700 hover:shadow' : 'bg-emerald-300 cursor-not-allowed'"
+              :disabled="!canSubmitBuy"
               @click="submitOrder"
             >
-              {{ orderSide === 'buy' ? t('確認買入', 'Confirm Buy', '确认买入') : t('確認賣出', 'Confirm Sell', '确认卖出') }}
+              {{ t('確認買入', 'Confirm Buy', '确认买入') }}
+            </button>
+            <button
+              v-else
+              class="w-full py-4 rounded-xl text-white font-bold text-base shadow-sm transition-all"
+              :class="canSubmitSell ? 'bg-red-600 hover:bg-red-700 hover:shadow' : 'bg-red-300 cursor-not-allowed'"
+              :disabled="!canSubmitSell"
+              @click="submitOrder"
+            >
+              {{ t('確認賣出', 'Confirm Sell', '确认卖出') }}
             </button>
           </div>
         </div>
