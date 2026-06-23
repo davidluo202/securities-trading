@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLanguage, type LangMode } from '../../composables/useLanguage'
+import { APP_VERSION } from '../../version'
 
 const route = useRoute()
 const router = useRouter()
@@ -194,7 +195,7 @@ const langs: { mode: LangMode; label: string }[] = [
         >
           🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.005</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">{{ APP_VERSION }}</div>
       </div>
     </aside>
 
@@ -298,7 +299,7 @@ const langs: { mode: LangMode; label: string }[] = [
             <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
               🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
             </button>
-            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.005</div>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">{{ APP_VERSION }}</div>
           </div>
         </aside>
       </div>

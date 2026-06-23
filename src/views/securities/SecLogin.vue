@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLanguage, type LangMode } from '../../composables/useLanguage'
+import { APP_VERSION } from '../../version'
 
 const router = useRouter()
 const { t, langMode, setLang } = useLanguage()
@@ -296,7 +297,7 @@ function handleRegister() {
           </p>
         </div>
 
-        <p class="text-center text-xs text-gray-400 mt-6">v260622.004</p>
+        <p class="text-center text-sm font-bold text-blue-600 mt-6 tracking-wide">{{ APP_VERSION }}</p>
       </div>
     </main>
   </div>
