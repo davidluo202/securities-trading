@@ -11,7 +11,22 @@ function goStock(symbol: string) {
 
 const activeList = ref<'watchlist' | 'hsi' | 'hstech'>('watchlist')
 
-const DEFAULT_WATCHLIST = '0700.HK,9988.HK,9618.HK,1810.HK,0388.HK,2318.HK,3690.HK,AAPL,TSLA,NVDA'
+const FALLBACK_WATCHLIST = '0700.HK,9988.HK,9618.HK,1810.HK,0388.HK,2318.HK,3690.HK,AAPL,TSLA,NVDA'
+
+// Read from localStorage sec-watchlist (newest first), fall back to default
+const savedWatchlist = (() => {
+  try {
+    const raw = localStorage.getItem('sec-watchlist')
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.map((s: { symbol: string }) => s.symbol).join(',')
+      }
+    }
+  } catch { /* silent */ }
+  return ''
+})()
+const DEFAULT_WATCHLIST = savedWatchlist || FALLBACK_WATCHLIST
 
 interface StockData {
   symbol: string; name: string; price: number; change: number; changePercent: number

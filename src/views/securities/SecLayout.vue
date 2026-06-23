@@ -10,6 +10,28 @@ const sidebarOpen = ref(false)
 const langDropdown = ref(false)
 const paperMode = ref(localStorage.getItem('sec-trade-mode') === 'paper')
 
+// Font size toggle
+const fontSizes = [
+  { label: '小', size: '14px' },
+  { label: '中', size: '16px' },
+  { label: '大', size: '20px' },
+]
+const fontSizeIndex = ref((() => {
+  const saved = localStorage.getItem('sec-font-size-index')
+  return saved ? parseInt(saved) : 1
+})())
+function applyFontSize() {
+  document.documentElement.style.fontSize = fontSizes[fontSizeIndex.value].size
+  localStorage.setItem('sec-font-size-index', String(fontSizeIndex.value))
+}
+function cycleFontSize() {
+  fontSizeIndex.value = (fontSizeIndex.value + 1) % fontSizes.length
+  applyFontSize()
+}
+
+// Notification bell
+const unreadCount = ref(3)
+
 // Dynamic logo based on language
 const sidebarLogo = computed(() => {
   if (langMode.value === 'en' || langMode.value === 'bilingual') return '/logo-en-black.jpg'
@@ -22,6 +44,9 @@ let clockTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   clockTimer = setInterval(() => { currentTime.value = new Date() }, 1000)
+  applyFontSize()
+  loadWeather()
+  setInterval(loadWeather, 600000) // refresh weather every 10 min
 })
 onUnmounted(() => { if (clockTimer) clearInterval(clockTimer) })
 
@@ -38,6 +63,21 @@ const userName = computed(() => {
   // TODO: get from auth store
   return 'David'
 })
+
+// Weather
+const weatherIcon = ref('🌤️')
+const weatherTemp = ref('')
+const weatherWarning = ref('')
+
+async function loadWeather() {
+  try {
+    const res = await fetch('/api/weather')
+    const data = await res.json()
+    weatherIcon.value = data.icon || '🌤️'
+    weatherTemp.value = data.temp || ''
+    weatherWarning.value = data.warning || ''
+  } catch { /* silent */ }
+}
 
 const timeString = computed(() => {
   return currentTime.value.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -92,7 +132,7 @@ const langs: { mode: LangMode; label: string }[] = [
       <!-- Clock + Greeting (yellow bg in paper mode) -->
       <div class="px-5 py-4 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
         <div class="text-xs mb-1" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
-        <div class="text-lg font-bold text-white">{{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！</div>
+        <div class="text-lg font-bold text-white">{{ weatherIcon }} {{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span><span v-if="weatherWarning" class="text-xs font-semibold text-red-400 ml-1">{{ weatherWarning }}</span></div>
         <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
           {{ t('⚠ 模擬盤模式', '⚠ Paper Trade Mode', '⚠ 模拟盘模式') }}
         </div>
@@ -127,7 +167,7 @@ const langs: { mode: LangMode; label: string }[] = [
         >
           🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260622.016</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.001</div>
       </div>
     </aside>
 
@@ -143,10 +183,19 @@ const langs: { mode: LangMode; label: string }[] = [
           <span v-if="paperMode" class="lg:hidden text-xs font-bold text-yellow-900 bg-yellow-500/40 px-2 py-0.5 rounded">{{ t('模擬盤', 'Paper', '模拟盘') }}</span>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Font Size Toggle -->
+          <button
+            class="px-3 py-2 rounded bg-slate-100 text-sm font-medium text-slate-600 hover:bg-slate-200"
+            @click="cycleFontSize"
+            :title="t('字體大小', 'Font Size', '字体大小')"
+          >
+            {{ fontSizes[fontSizeIndex].label }}
+          </button>
+
           <!-- Language Switcher -->
           <div class="relative">
             <button
-              class="px-2.5 py-1.5 rounded bg-slate-100 text-xs font-medium text-slate-600 hover:bg-slate-200"
+              class="px-3 py-2 rounded bg-slate-100 text-sm font-medium text-slate-600 hover:bg-slate-200"
               @click="langDropdown = !langDropdown"
             >
               {{ langLabel }}
@@ -166,6 +215,12 @@ const langs: { mode: LangMode; label: string }[] = [
               </button>
             </div>
           </div>
+
+          <!-- Notification Bell -->
+          <button class="relative px-2 py-2 rounded hover:bg-slate-100" :title="t('通知', 'Notifications', '通知')">
+            <span class="text-lg">&#x1F514;</span>
+            <span v-if="unreadCount > 0" class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{{ unreadCount }}</span>
+          </button>
         </div>
       </header>
 
@@ -216,7 +271,7 @@ const langs: { mode: LangMode; label: string }[] = [
             <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
               🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
             </button>
-            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260622.016</div>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.001</div>
           </div>
         </aside>
       </div>
