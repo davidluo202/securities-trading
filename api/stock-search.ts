@@ -44,6 +44,22 @@ const STOCKS: StockEntry[] = [
   { symbol: 'XPEV', name: '小鹏汽车', pinyin: 'xpqc' },
   { symbol: 'LI', name: '理想汽车', pinyin: 'lxqc' },
   { symbol: 'BIDU', name: '百度', pinyin: 'bd' },
+  // A-share stocks
+  { symbol: '600519.SH', name: '贵州茅台', pinyin: 'gzmt' },
+  { symbol: '601318.SH', name: '中国平安', pinyin: 'zgpa' },
+  { symbol: '000001.SZ', name: '平安银行', pinyin: 'payh' },
+  { symbol: '600036.SH', name: '招商银行', pinyin: 'zsyh' },
+  { symbol: '601012.SH', name: '隆基绿能', pinyin: 'ljln' },
+  { symbol: '000858.SZ', name: '五粮液', pinyin: 'wly' },
+  { symbol: '600900.SH', name: '长江电力', pinyin: 'cjdl' },
+  { symbol: '601899.SH', name: '紫金矿业', pinyin: 'zjky' },
+  { symbol: '300750.SZ', name: '宁德时代', pinyin: 'ndsd' },
+  { symbol: '002594.SZ', name: '比亚迪', pinyin: 'byd' },
+  { symbol: '600276.SH', name: '恒瑞医药', pinyin: 'hryy' },
+  { symbol: '000333.SZ', name: '美的集团', pinyin: 'mdjt' },
+  { symbol: '601398.SH', name: '工商银行', pinyin: 'gsyh' },
+  { symbol: '600030.SH', name: '中信证券', pinyin: 'zxzq' },
+  { symbol: '300059.SZ', name: '东方财富', pinyin: 'dfcf' },
 ]
 
 export default function handler(req: VercelRequest, res: VercelResponse) {

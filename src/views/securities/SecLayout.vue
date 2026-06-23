@@ -125,7 +125,7 @@ function goToNotifications() {
 const navItems = computed(() => [
   { key: 'dashboard', icon: '📊', label: t('賬戶總覽', 'Dashboard', '账户总览'), labelEn: 'Dashboard', route: '/sec/dashboard' },
   { key: 'trade', icon: '📝', label: t('交易下單', 'Trade', '交易下单'), labelEn: 'Trade', route: '/sec/trade' },
-  { key: 'orders', icon: '📋', label: t('委託訂單', 'Orders', '委托订单'), labelEn: 'Orders', route: '/sec/orders' },
+  { key: 'orders', icon: '📋', label: t('我的訂單', 'My Orders', '我的订单'), labelEn: 'My Orders', route: '/sec/orders' },
   { key: 'holdings', icon: '📁', label: t('持倉', 'Holdings', '持仓'), labelEn: 'Portfolio', route: '/sec/holdings' },
   { key: 'market', icon: '📈', label: t('行情', 'Market', '行情'), labelEn: 'Market', route: '/sec/market' },
   { key: 'funds', icon: '💰', label: t('資金管理', 'Funds', '资金管理'), labelEn: 'Funds', route: '/sec/funds' },
@@ -194,7 +194,7 @@ const langs: { mode: LangMode; label: string }[] = [
         >
           🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.003</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.004</div>
       </div>
     </aside>
 
@@ -298,7 +298,7 @@ const langs: { mode: LangMode; label: string }[] = [
             <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
               🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
             </button>
-            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.003</div>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.004</div>
           </div>
         </aside>
       </div>

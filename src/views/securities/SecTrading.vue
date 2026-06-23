@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useLanguage } from '../../composables/useLanguage'
-import { createChart, CandlestickSeries, HistogramSeries, type IChartApi, type ISeriesApi } from 'lightweight-charts'
+import { createChart, CandlestickSeries, HistogramSeries, LineSeries, type IChartApi, type ISeriesApi } from 'lightweight-charts'
 
 const { t } = useLanguage()
 
@@ -51,14 +51,26 @@ function selectStock(item: { symbol: string; name: string }) {
   fetchKline(item.symbol, activePeriod.value)
 }
 
+// Toast
+const toastMsg = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+function showToast(msg: string) {
+  toastMsg.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMsg.value = '' }, 2000)
+}
+
+// Paper mode
+const paperMode = ref(localStorage.getItem('sec-trade-mode') === 'paper')
+
 // Watchlist
 function addToWatchlist() {
   if (!selectedStock.value) return
-  const raw = localStorage.getItem('sec-watchlist')
-  let list: { symbol: string; name: string }[] = raw ? JSON.parse(raw) : []
+  let list: { symbol: string; name: string }[] = JSON.parse(localStorage.getItem('sec-watchlist') || '[]')
   list = list.filter(s => s.symbol !== selectedStock.value!.symbol)
   list.unshift({ symbol: selectedStock.value.symbol, name: selectedStock.value.name })
   localStorage.setItem('sec-watchlist', JSON.stringify(list))
+  showToast('已加入自選股 ✓')
 }
 
 // Chart
@@ -66,6 +78,18 @@ const chartContainer = ref<HTMLElement | null>(null)
 let chart: IChartApi | null = null
 let candleSeries: ISeriesApi<'Candlestick'> | null = null
 let volumeSeries: ISeriesApi<'Histogram'> | null = null
+let maSeriesList: ISeriesApi<'Line'>[] = []
+
+function calcMA(candles: { close: number }[], period: number): (number | null)[] {
+  const result: (number | null)[] = []
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) { result.push(null); continue }
+    let sum = 0
+    for (let j = i - period + 1; j <= i; j++) sum += candles[j].close
+    result.push(sum / period)
+  }
+  return result
+}
 
 const periods = [
   { key: 'm1', label: '1分' },
@@ -96,6 +120,7 @@ function renderChart(candles: any[]) {
     chart = null
     candleSeries = null
     volumeSeries = null
+    maSeriesList = []
   }
 
   chart = createChart(chartContainer.value, {
@@ -122,15 +147,16 @@ function renderChart(candles: any[]) {
 
   // Determine if time-based (intraday) or date-based
   const isIntraday = candles[0].time && candles[0].time.length === 4
-  const today = new Date()
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   const candleData = candles.map((c: any) => {
     let time: any
     if (isIntraday) {
+      // Convert "HHMM" to Unix timestamp for lightweight-charts
+      const today = new Date()
       const hh = parseInt(c.time.slice(0, 2))
       const mm = parseInt(c.time.slice(2, 4))
-      time = `${dateStr} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+      today.setHours(hh, mm, 0, 0)
+      time = Math.floor(today.getTime() / 1000)
     } else {
       time = c.time
     }
@@ -145,6 +171,33 @@ function renderChart(candles: any[]) {
 
   candleSeries.setData(candleData)
   volumeSeries.setData(volumeData)
+
+  // MA lines
+  const maConfigs = [
+    { period: 10, color: '#f59e0b' },
+    { period: 20, color: '#3b82f6' },
+    { period: 30, color: '#8b5cf6' },
+    { period: 60, color: '#ef4444' },
+  ]
+  for (const mc of maConfigs) {
+    if (candles.length < mc.period) continue
+    const maValues = calcMA(candles, mc.period)
+    const maSeries = chart.addSeries(LineSeries, {
+      color: mc.color,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })
+    const maData: { time: any; value: number }[] = []
+    for (let i = 0; i < maValues.length; i++) {
+      if (maValues[i] !== null) {
+        maData.push({ time: candleData[i].time, value: maValues[i]! })
+      }
+    }
+    maSeries.setData(maData)
+    maSeriesList.push(maSeries)
+  }
+
   chart.timeScale().fitContent()
 }
 
@@ -185,6 +238,30 @@ const orderTypes = [
   { value: 'stop-limit', label: () => t('止損限價', 'Stop Limit', '止损限价') },
 ]
 
+// Submit order
+function submitOrder() {
+  if (!selectedStock.value || !quote.value) return
+  const order = {
+    id: Date.now().toString(),
+    symbol: selectedStock.value.symbol,
+    name: selectedStock.value.name,
+    side: orderSide.value,
+    type: orderType.value,
+    quantity: quantity.value,
+    price: orderType.value === 'market' ? quote.value.price : price.value,
+    paper: paperMode.value,
+    time: new Date().toISOString(),
+    status: 'pending',
+  }
+  const orders: any[] = JSON.parse(localStorage.getItem('sec-orders') || '[]')
+  orders.unshift(order)
+  localStorage.setItem('sec-orders', JSON.stringify(orders))
+  showToast(paperMode.value ? '模擬訂單已提交' : '訂單已提交')
+  // Reset form
+  quantity.value = 100
+  price.value = quote.value.price
+}
+
 // Close dropdown on outside click
 function onBodyClick() {
   showResults.value = false
@@ -195,6 +272,11 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
 
 <template>
   <div class="space-y-4">
+    <!-- Toast -->
+    <div v-if="toastMsg" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium">
+      {{ toastMsg }}
+    </div>
+
     <!-- Search Bar -->
     <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100 relative" @click.stop>
       <div class="flex items-center gap-3">
@@ -349,6 +431,7 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
             <button
               class="w-full py-3 rounded-lg text-white font-semibold text-sm transition-colors"
               :class="orderSide === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-500 hover:bg-red-600'"
+              @click="submitOrder"
             >
               {{ orderSide === 'buy' ? t('確認買入', 'Confirm Buy', '确认买入') : t('確認賣出', 'Confirm Sell', '确认卖出') }}
             </button>

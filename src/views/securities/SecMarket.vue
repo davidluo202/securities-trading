@@ -14,7 +14,7 @@ const activeList = ref<'watchlist' | 'hsi' | 'hstech'>('watchlist')
 const FALLBACK_WATCHLIST = '0700.HK,9988.HK,9618.HK,1810.HK,0388.HK,2318.HK,3690.HK,AAPL,TSLA,NVDA'
 
 // Read from localStorage sec-watchlist (newest first), fall back to default
-const savedWatchlist = (() => {
+function getWatchlistSymbols(): string {
   try {
     const raw = localStorage.getItem('sec-watchlist')
     if (raw) {
@@ -24,9 +24,8 @@ const savedWatchlist = (() => {
       }
     }
   } catch { /* silent */ }
-  return ''
-})()
-const DEFAULT_WATCHLIST = savedWatchlist || FALLBACK_WATCHLIST
+  return FALLBACK_WATCHLIST
+}
 
 interface StockData {
   symbol: string; name: string; price: number; change: number; changePercent: number
@@ -39,7 +38,8 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function fetchWatchlist() {
   try {
-    const res = await fetch(`/api/stock-quote?symbols=${DEFAULT_WATCHLIST}`)
+    const symbols = getWatchlistSymbols()
+    const res = await fetch(`/api/stock-quote?symbols=${symbols}`)
     if (res.ok) stocks.value = await res.json()
   } catch { /* silent */ }
   loading.value = false
@@ -78,7 +78,7 @@ function generateSparkline(price: number, prevClose: number): string {
 }
 
 async function fetchSparklines() {
-  const symbolList = DEFAULT_WATCHLIST.split(',').map(s => s.trim())
+  const symbolList = getWatchlistSymbols().split(',').map(s => s.trim())
   for (const sym of symbolList) {
     try {
       const res = await fetch(`/api/stock-history?symbol=${sym}&days=15`)
