@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage'
 const { t } = useLanguage()
 
@@ -17,6 +17,11 @@ function loadBankAccounts(): BankAccount[] {
 }
 const bankAccounts = ref<BankAccount[]>(loadBankAccounts())
 const selectedBankIndex = ref(bankAccounts.value.length > 0 ? 0 : -1)
+const selectedCurrency = computed(() => {
+  const idx = selectedBankIndex.value
+  if (idx >= 0 && idx < bankAccounts.value.length) return bankAccounts.value[idx].currency
+  return 'HKD'
+})
 function maskAccount(num: string) {
   if (num.length <= 4) return num
   return '****' + num.slice(-4)
@@ -128,7 +133,7 @@ function submitDeposit() {
           <div>
             <div class="flex items-center gap-2 mb-2">
               <span class="w-6 h-6 rounded-full bg-blue-700 text-white text-xs font-bold flex items-center justify-center">2</span>
-              <label class="text-sm font-semibold text-slate-700">{{ t('金額 (HKD)', 'Amount (HKD)', '金额 (HKD)') }}</label>
+              <label class="text-sm font-semibold text-slate-700">{{ t('金額', 'Amount', '金额') }} ({{ selectedCurrency }})</label>
             </div>
             <input
               v-model="depositAmount"
