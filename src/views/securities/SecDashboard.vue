@@ -65,7 +65,6 @@ function generateSparkline(price: number, prevClose: number): string {
 }
 
 async function fetchSparklines() {
-  // Fetch history for index-like symbols using stock-history API
   const symbols = ['HSI', '000001.SH', '399001.SZ']
   for (const sym of symbols) {
     try {
@@ -99,10 +98,10 @@ const indices = computed(() =>
 const buyingPower = computed(() => isPaper ? 1000000 : 0)
 
 const summary = computed(() => [
-  { label: () => t('總資產', 'Total Assets', '总资产'), value: isPaper ? 'HK$ 1,000,000.00' : 'HK$ 0.00', change: '', up: true },
-  { label: () => t('購買力', 'Buying Power', '购买力'), value: `HK$ ${buyingPower.value.toLocaleString('en', { minimumFractionDigits: 2 })}`, change: '', up: true },
-  { label: () => t('今日盈虧', "Today's P&L", '今日盈亏'), value: 'HK$ 0.00', change: '', up: true },
-  { label: () => t('持倉數量', 'Total Positions', '持仓数量'), value: '0', change: '', up: true },
+  { label: () => t('總資產', 'Total Assets', '总资产'), value: isPaper ? 'HK$ 1,000,000.00' : 'HK$ 0.00', icon: 'assets', gradient: 'from-blue-600 to-blue-800' },
+  { label: () => t('購買力', 'Buying Power', '购买力'), value: `HK$ ${buyingPower.value.toLocaleString('en', { minimumFractionDigits: 2 })}`, icon: 'power', gradient: 'from-emerald-600 to-emerald-800' },
+  { label: () => t('今日盈虧', "Today's P&L", '今日盈亏'), value: 'HK$ 0.00', icon: 'pnl', gradient: 'from-amber-500 to-orange-600' },
+  { label: () => t('持倉數量', 'Total Positions', '持仓数量'), value: '0', icon: 'positions', gradient: 'from-violet-600 to-purple-800' },
 ])
 
 function goMarket() {
@@ -121,33 +120,42 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <h2 class="text-xl font-semibold text-slate-800">{{ t('帳戶總覽', 'Account Overview', '账户总览') }}</h2>
+  <div class="space-y-8">
+    <!-- Page Title -->
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900" style="font-family: Inter, system-ui, -apple-system, sans-serif;">{{ t('帳戶總覽', 'Account Overview', '账户总览') }}</h2>
+      <p class="text-sm text-slate-500 mt-1">{{ t('查看您的資產摘要和市場動態', 'View your portfolio summary and market activity', '查看您的资产摘要和市场动态') }}</p>
+    </div>
 
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div v-for="(item, i) in summary" :key="i" class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-        <p class="text-xs text-slate-500 mb-1">{{ item.label() }}</p>
-        <p class="text-lg font-semibold text-slate-800">{{ item.value }}</p>
-        <p v-if="item.change" class="text-xs mt-1" :class="item.up ? 'text-green-600' : 'text-red-500'">{{ item.change }}</p>
+    <!-- Summary Cards with Gradients -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div v-for="(item, i) in summary" :key="i" class="rounded-2xl p-6 shadow-sm text-white bg-gradient-to-br" :class="item.gradient">
+        <div class="flex items-center gap-2 mb-3">
+          <svg v-if="item.icon === 'assets'" class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <svg v-else-if="item.icon === 'power'" class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <svg v-else-if="item.icon === 'pnl'" class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          <svg v-else class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <span class="text-sm font-medium opacity-90">{{ item.label() }}</span>
+        </div>
+        <p class="text-xl font-bold tracking-tight">{{ item.value }}</p>
       </div>
     </div>
 
     <!-- Market Indices -->
     <div>
-      <h3 class="text-sm font-semibold text-slate-700 mb-3">{{ t('市場指數', 'Market Indices', '市场指数') }}</h3>
-      <div v-if="loading" class="text-sm text-slate-400 py-4 text-center">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
-      <div v-else-if="indices.length === 0" class="text-sm text-slate-400 py-4 text-center">{{ t('暫無數據', 'No data available', '暂无数据') }}</div>
-      <div v-else class="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <div v-for="(idx, i) in indices" :key="i" class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-          <p class="text-xs text-slate-500 mb-1">{{ idx.name }}</p>
-          <div class="flex items-center justify-between gap-2">
+      <h3 class="text-lg font-semibold text-slate-800 mb-4">{{ t('市場指數', 'Market Indices', '市场指数') }}</h3>
+      <div v-if="loading" class="text-sm text-slate-400 py-6 text-center">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
+      <div v-else-if="indices.length === 0" class="text-sm text-slate-400 py-6 text-center">{{ t('暫無數據', 'No data available', '暂无数据') }}</div>
+      <div v-else class="grid grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-for="(idx, i) in indices" :key="i" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+          <p class="text-sm text-slate-500 mb-2 font-medium">{{ idx.name }}</p>
+          <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-lg font-semibold text-slate-800">{{ idx.value }}</p>
-              <p class="text-xs" :class="idx.up ? 'text-green-600' : 'text-red-500'">{{ idx.change }}</p>
+              <p class="text-xl font-bold text-slate-900">{{ idx.value }}</p>
+              <p class="text-sm font-medium mt-1" :class="idx.up ? 'text-green-600' : 'text-red-600'">{{ idx.change }}</p>
             </div>
-            <svg class="w-20 h-8 shrink-0" viewBox="0 0 80 30">
-              <polyline fill="none" :stroke="idx.up ? '#22c55e' : '#ef4444'" stroke-width="1.5" :points="idx.spark" />
+            <svg class="w-24 h-10 shrink-0" viewBox="0 0 80 30">
+              <polyline fill="none" :stroke="idx.up ? '#059669' : '#dc2626'" stroke-width="1.5" :points="idx.spark" />
             </svg>
           </div>
         </div>
@@ -155,13 +163,16 @@ onUnmounted(() => {
     </div>
 
     <!-- Top Holdings -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100">
-      <div class="px-5 py-4 border-b border-slate-100">
-        <h3 class="text-sm font-semibold text-slate-700">{{ t('主要持倉', 'Top Holdings', '主要持仓') }}</h3>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200">
+      <div class="px-6 py-5 border-b border-slate-200">
+        <h3 class="text-lg font-semibold text-slate-800">{{ t('主要持倉', 'Top Holdings', '主要持仓') }}</h3>
       </div>
-      <div class="px-5 py-8 text-center text-slate-400 text-sm">
-        <p>{{ t('暫無持倉', 'No holdings yet', '暂无持仓') }}</p>
-        <button class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors" @click="goMarket">
+      <div class="px-6 py-12 text-center">
+        <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+        <p class="text-base text-slate-400 mb-4">{{ t('暫無持倉', 'No holdings yet', '暂无持仓') }}</p>
+        <button class="px-6 py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm font-bold shadow-sm hover:shadow transition-all" @click="goMarket">
           {{ t('瀏覽行情', 'Browse Market', '浏览行情') }}
         </button>
       </div>

@@ -125,16 +125,16 @@ function renderChart(candles: any[]) {
 
   chart = createChart(chartContainer.value, {
     width: chartContainer.value.clientWidth,
-    height: 320,
+    height: 360,
     layout: { background: { color: '#ffffff' }, textColor: '#64748b' },
     grid: { vertLines: { color: '#f1f5f9' }, horzLines: { color: '#f1f5f9' } },
     timeScale: { borderColor: '#e2e8f0' },
   })
 
   candleSeries = chart.addSeries(CandlestickSeries, {
-    upColor: '#22c55e', downColor: '#ef4444',
-    borderUpColor: '#22c55e', borderDownColor: '#ef4444',
-    wickUpColor: '#22c55e', wickDownColor: '#ef4444',
+    upColor: '#059669', downColor: '#dc2626',
+    borderUpColor: '#059669', borderDownColor: '#dc2626',
+    wickUpColor: '#059669', wickDownColor: '#dc2626',
   })
 
   volumeSeries = chart.addSeries(HistogramSeries, {
@@ -145,13 +145,11 @@ function renderChart(candles: any[]) {
 
   if (candles.length === 0) return
 
-  // Determine if time-based (intraday) or date-based
   const isIntraday = candles[0].time && candles[0].time.length === 4
 
   const candleData = candles.map((c: any) => {
     let time: any
     if (isIntraday) {
-      // Convert "HHMM" to Unix timestamp for lightweight-charts
       const today = new Date()
       const hh = parseInt(c.time.slice(0, 2))
       const mm = parseInt(c.time.slice(2, 4))
@@ -166,13 +164,12 @@ function renderChart(candles: any[]) {
   const volumeData = candles.map((c: any, i: number) => ({
     time: candleData[i].time,
     value: c.volume || 0,
-    color: c.close >= c.open ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)',
+    color: c.close >= c.open ? 'rgba(5,150,105,0.3)' : 'rgba(220,38,38,0.3)',
   }))
 
   candleSeries.setData(candleData)
   volumeSeries.setData(volumeData)
 
-  // MA lines
   const maConfigs = [
     { period: 10, color: '#f59e0b' },
     { period: 20, color: '#3b82f6' },
@@ -206,7 +203,6 @@ function switchPeriod(key: string) {
   if (selectedStock.value) fetchKline(selectedStock.value.symbol, key)
 }
 
-// Resize handler
 function onResize() {
   if (chart && chartContainer.value) {
     chart.applyOptions({ width: chartContainer.value.clientWidth })
@@ -238,7 +234,6 @@ const orderTypes = [
   { value: 'stop-limit', label: () => t('止損限價', 'Stop Limit', '止损限价') },
 ]
 
-// Submit order
 function submitOrder() {
   if (!selectedStock.value || !quote.value) return
   const order = {
@@ -257,12 +252,10 @@ function submitOrder() {
   orders.unshift(order)
   localStorage.setItem('sec-orders', JSON.stringify(orders))
   showToast(paperMode.value ? '模擬訂單已提交' : '訂單已提交')
-  // Reset form
   quantity.value = 100
   price.value = quote.value.price
 }
 
-// Close dropdown on outside click
 function onBodyClick() {
   showResults.value = false
 }
@@ -271,166 +264,169 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-6">
     <!-- Toast -->
-    <div v-if="toastMsg" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium">
+    <div v-if="toastMsg" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-8 py-3 rounded-xl shadow-lg text-base font-bold">
       {{ toastMsg }}
     </div>
 
     <!-- Search Bar -->
-    <div class="bg-white rounded-xl p-3 shadow-sm border border-slate-100 relative" @click.stop>
-      <div class="flex items-center gap-3">
-        <div class="flex max-w-md border-2 border-slate-400 rounded-lg overflow-hidden">
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative" @click.stop>
+      <div class="flex items-center gap-4">
+        <div class="flex flex-1 max-w-xl border-2 border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
           <input
             v-model="searchQuery"
             type="text"
             :placeholder="t('輸入股票代碼或名稱拼音首字母', 'Enter stock code or pinyin initials', '输入股票代码或名称拼音首字母')"
-            class="flex-1 text-sm outline-none text-slate-700 placeholder-slate-400 px-3 py-2"
+            class="flex-1 text-base outline-none text-slate-700 placeholder-slate-400 px-4 py-3"
             @input="onSearchInput"
             @keydown.enter="onSearchInput"
             @focus="showResults = searchResults.length > 0"
           />
           <button
-            class="px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            class="px-4 py-3 bg-blue-700 text-white hover:bg-blue-800 transition-colors"
             @click="onSearchInput"
             :title="t('搜索', 'Search', '搜索')"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </button>
         </div>
         <button
           v-if="selectedStock"
-          class="text-xs px-3 py-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium whitespace-nowrap"
+          class="text-sm px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold whitespace-nowrap transition-colors"
           @click="addToWatchlist"
         >
           {{ t('加入自選股', 'Add to Watchlist', '加入自选股') }}
         </button>
       </div>
       <!-- Search Results Dropdown -->
-      <div v-if="showResults && searchResults.length" class="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 max-h-80 overflow-y-auto">
+      <div v-if="showResults && searchResults.length" class="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-lg border border-slate-200 py-2 z-50 max-h-80 overflow-y-auto">
         <button
           v-for="item in searchResults"
           :key="item.symbol"
-          class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-3 text-sm"
+          class="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-4 text-base transition-colors"
           @click="selectStock(item)"
         >
-          <span class="font-medium text-blue-600 min-w-[80px]">{{ item.symbol }}</span>
+          <span class="font-bold text-blue-700 min-w-[90px]">{{ item.symbol }}</span>
           <span class="text-slate-700">{{ item.name }}</span>
         </button>
       </div>
     </div>
 
     <!-- Empty State -->
-    <div v-if="!selectedStock" class="bg-white rounded-xl shadow-sm border border-slate-100 p-16 text-center">
+    <div v-if="!selectedStock" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-20 text-center">
+      <svg class="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
       <p class="text-lg text-slate-400">{{ t('請搜索並選擇一個標的', 'Search and select a stock', '请搜索并选择一个标的') }}</p>
     </div>
 
     <!-- Main Trading Area -->
-    <div v-else class="flex flex-col lg:flex-row gap-4">
+    <div v-else class="flex flex-col lg:flex-row gap-6">
       <!-- Left Panel -->
-      <div class="flex-1 space-y-4">
+      <div class="flex-1 space-y-6">
         <!-- Quote Card -->
-        <div v-if="quote" class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div class="flex items-start justify-between mb-4">
+        <div v-if="quote" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="flex items-start justify-between mb-5">
             <div>
-              <h3 class="text-lg font-bold text-slate-800">{{ quote.symbol }}</h3>
-              <p class="text-sm text-slate-500">{{ quote.name }}</p>
+              <h3 class="text-xl font-bold text-slate-900">{{ quote.symbol }}</h3>
+              <p class="text-sm text-slate-500 mt-0.5">{{ quote.name }}</p>
             </div>
             <div class="text-right">
-              <p class="text-2xl font-bold" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-500'">{{ quote.price > 0 ? quote.price.toFixed(2) : '--' }}</p>
-              <p v-if="quote.price > 0" class="text-sm" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-500'">
+              <p class="text-3xl font-bold tracking-tight" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-600'">{{ quote.price > 0 ? quote.price.toFixed(2) : '--' }}</p>
+              <p v-if="quote.price > 0" class="text-sm font-semibold mt-1 px-3 py-1 rounded-lg inline-block" :class="quote.change >= 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'">
                 {{ quote.change >= 0 ? '+' : '' }}{{ quote.change.toFixed(2) }} ({{ quote.change >= 0 ? '+' : '' }}{{ quote.changePercent.toFixed(2) }}%)
               </p>
             </div>
           </div>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div><span class="text-slate-400">{{ t('開', 'Open', '开') }}</span> <span class="ml-1 text-slate-700">{{ quote.open || '--' }}</span></div>
-            <div><span class="text-slate-400">{{ t('高', 'High', '高') }}</span> <span class="ml-1 text-slate-700">{{ quote.high || '--' }}</span></div>
-            <div><span class="text-slate-400">{{ t('低', 'Low', '低') }}</span> <span class="ml-1 text-slate-700">{{ quote.low || '--' }}</span></div>
-            <div><span class="text-slate-400">{{ t('量', 'Vol', '量') }}</span> <span class="ml-1 text-slate-700">{{ quote.volume || '--' }}</span></div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('開', 'Open', '开') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.open || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('高', 'High', '高') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.high || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('低', 'Low', '低') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.low || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('量', 'Vol', '量') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.volume || '--' }}</span></div>
           </div>
         </div>
 
         <!-- Chart Area -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div class="flex items-center gap-1 px-4 py-3 border-b border-slate-100 flex-wrap">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="flex items-center gap-1.5 px-6 py-4 border-b border-slate-200 flex-wrap">
             <button
               v-for="p in periods"
               :key="p.key"
-              class="px-2.5 py-1 text-xs rounded transition-colors"
-              :class="activePeriod === p.key ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'"
+              class="px-3.5 py-1.5 text-sm font-semibold rounded-xl transition-colors"
+              :class="activePeriod === p.key ? 'bg-blue-700 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'"
               @click="switchPeriod(p.key)"
             >{{ p.label }}</button>
           </div>
-          <div ref="chartContainer" class="h-80 bg-white"></div>
+          <div ref="chartContainer" class="h-[360px] bg-white"></div>
         </div>
       </div>
 
       <!-- Right Panel: Order Ticket -->
-      <div class="w-full lg:w-80 shrink-0">
-        <div class="bg-white rounded-xl shadow-sm border border-slate-100 sticky top-4">
+      <div class="w-full lg:w-96 shrink-0">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 sticky top-4 overflow-hidden">
           <!-- Buy/Sell Tabs -->
           <div class="flex">
             <button
-              class="flex-1 py-3 text-sm font-semibold text-center rounded-tl-xl transition-colors"
-              :class="orderSide === 'buy' ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+              class="flex-1 py-4 text-base font-bold text-center transition-colors"
+              :class="orderSide === 'buy' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
               @click="orderSide = 'buy'"
             >{{ t('買入', 'Buy', '买入') }}</button>
             <button
-              class="flex-1 py-3 text-sm font-semibold text-center rounded-tr-xl transition-colors"
-              :class="orderSide === 'sell' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+              class="flex-1 py-4 text-base font-bold text-center transition-colors"
+              :class="orderSide === 'sell' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
               @click="orderSide = 'sell'"
             >{{ t('賣出', 'Sell', '卖出') }}</button>
           </div>
 
-          <div class="p-4 space-y-4">
+          <div class="p-6 space-y-5">
             <!-- Order Type -->
             <div>
-              <label class="text-xs text-slate-500 block mb-1.5">{{ t('委託類型', 'Order Type', '委托类型') }}</label>
-              <select v-model="orderType" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-500">
+              <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('委託類型', 'Order Type', '委托类型') }}</label>
+              <select v-model="orderType" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
                 <option v-for="ot in orderTypes" :key="ot.value" :value="ot.value">{{ ot.label() }}</option>
               </select>
             </div>
 
             <!-- Quantity -->
             <div>
-              <label class="text-xs text-slate-500 block mb-1.5">{{ t('數量', 'Quantity', '数量') }}</label>
-              <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-                <button class="px-3 py-2 text-slate-500 hover:bg-slate-50" @click="quantity = Math.max(0, quantity - 100)">-</button>
-                <input v-model.number="quantity" type="number" class="flex-1 text-center text-sm py-2 outline-none" />
-                <button class="px-3 py-2 text-slate-500 hover:bg-slate-50" @click="quantity += 100">+</button>
+              <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('數量', 'Quantity', '数量') }}</label>
+              <div class="flex items-center border-2 border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                <button class="px-4 py-3 text-slate-500 hover:bg-slate-50 text-lg font-bold" @click="quantity = Math.max(0, quantity - 100)">-</button>
+                <input v-model.number="quantity" type="number" class="flex-1 text-center text-base py-3 outline-none font-semibold" />
+                <button class="px-4 py-3 text-slate-500 hover:bg-slate-50 text-lg font-bold" @click="quantity += 100">+</button>
               </div>
-              <div class="flex gap-2 mt-2">
-                <button v-for="q in [100, 500, 1000, 5000]" :key="q" class="flex-1 text-xs py-1 rounded bg-slate-50 text-slate-600 hover:bg-slate-100" @click="quantity = q">{{ q }}</button>
+              <div class="flex gap-2 mt-3">
+                <button v-for="q in [100, 500, 1000, 5000]" :key="q" class="flex-1 text-sm py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold transition-colors" @click="quantity = q">{{ q }}</button>
               </div>
             </div>
 
             <!-- Price -->
             <div v-if="orderType !== 'market'">
-              <label class="text-xs text-slate-500 block mb-1.5">{{ t('價格', 'Price', '价格') }}</label>
-              <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-                <button class="px-3 py-2 text-slate-500 hover:bg-slate-50" @click="price = Math.max(0, price - 0.2)">-</button>
-                <input v-model.number="price" type="number" step="0.2" class="flex-1 text-center text-sm py-2 outline-none" />
-                <button class="px-3 py-2 text-slate-500 hover:bg-slate-50" @click="price += 0.2">+</button>
+              <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('價格', 'Price', '价格') }}</label>
+              <div class="flex items-center border-2 border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                <button class="px-4 py-3 text-slate-500 hover:bg-slate-50 text-lg font-bold" @click="price = Math.max(0, price - 0.2)">-</button>
+                <input v-model.number="price" type="number" step="0.2" class="flex-1 text-center text-base py-3 outline-none font-semibold" />
+                <button class="px-4 py-3 text-slate-500 hover:bg-slate-50 text-lg font-bold" @click="price += 0.2">+</button>
               </div>
             </div>
 
             <!-- Order Summary -->
-            <div class="bg-slate-50 rounded-lg p-3 text-xs space-y-1.5">
-              <div class="flex justify-between text-slate-500">
+            <div class="bg-slate-50 rounded-xl p-4 space-y-2.5">
+              <div class="flex justify-between text-sm text-slate-500">
                 <span>{{ t('預估金額', 'Est. Amount', '预估金额') }}</span>
-                <span class="text-slate-700 font-medium">{{ quote?.symbol?.endsWith('.HK') ? 'HK' : 'US' }}$ {{ (quantity * price).toLocaleString('en', { minimumFractionDigits: 2 }) }}</span>
+                <span class="text-slate-800 font-bold">{{ quote?.symbol?.endsWith('.HK') ? 'HK' : 'US' }}$ {{ (quantity * price).toLocaleString('en', { minimumFractionDigits: 2 }) }}</span>
               </div>
-              <div class="flex justify-between text-slate-500">
+              <div class="flex justify-between text-sm text-slate-500">
                 <span>{{ t('佣金', 'Commission', '佣金') }}</span>
-                <span class="text-slate-700">~{{ quote?.symbol?.endsWith('.HK') ? 'HK' : 'US' }}$ {{ Math.max(50, quantity * price * 0.001).toFixed(2) }}</span>
+                <span class="text-slate-700 font-medium">~{{ quote?.symbol?.endsWith('.HK') ? 'HK' : 'US' }}$ {{ Math.max(50, quantity * price * 0.001).toFixed(2) }}</span>
               </div>
             </div>
 
             <!-- Submit -->
             <button
-              class="w-full py-3 rounded-lg text-white font-semibold text-sm transition-colors"
-              :class="orderSide === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-500 hover:bg-red-600'"
+              class="w-full py-4 rounded-xl text-white font-bold text-base shadow-sm hover:shadow transition-all"
+              :class="orderSide === 'buy' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'"
               @click="submitOrder"
             >
               {{ orderSide === 'buy' ? t('確認買入', 'Confirm Buy', '确认买入') : t('確認賣出', 'Confirm Sell', '确认卖出') }}

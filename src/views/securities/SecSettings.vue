@@ -77,94 +77,97 @@ function maskAccount(num: string) {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-2xl">
-    <h2 class="text-xl font-semibold text-slate-800">{{ t('系統設定', 'Settings', '系统设定') }}</h2>
+  <div class="space-y-8 max-w-2xl">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900">{{ t('系統設定', 'Settings', '系统设定') }}</h2>
+      <p class="text-sm text-slate-500 mt-1">{{ t('個人信息、銀行賬戶和交易偏好', 'Personal info, bank accounts, and trading preferences', '个人信息、银行账户和交易偏好') }}</p>
+    </div>
 
     <!-- Personal Info -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-      <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ t('個人信息', 'Personal Info', '个人信息') }}</h3>
-      <div class="space-y-3">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('個人信息', 'Personal Info', '个人信息') }}</h3>
+      <div class="space-y-4">
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('客戶姓名', 'Name', '客户姓名') }}</label>
-          <input v-model="userName" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('客戶姓名', 'Name', '客户姓名') }}</label>
+          <input v-model="userName" type="text" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('性別', 'Gender', '性别') }}</label>
-          <select v-model="userGender" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('性別', 'Gender', '性别') }}</label>
+          <select v-model="userGender" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
             <option value="male">{{ t('男', 'Male', '男') }}</option>
             <option value="female">{{ t('女', 'Female', '女') }}</option>
           </select>
         </div>
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('出生日期', 'Date of Birth', '出生日期') }} <span class="text-slate-400">({{ t('選填', 'Optional', '选填') }})</span></label>
-          <input v-model="userDob" type="date" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('出生日期', 'Date of Birth', '出生日期') }} <span class="text-slate-400 font-normal">({{ t('選填', 'Optional', '选填') }})</span></label>
+          <input v-model="userDob" type="date" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
-        <div class="flex items-center gap-3">
-          <button class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors" @click="saveProfile">
+        <div class="flex items-center gap-4 pt-1">
+          <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all" @click="saveProfile">
             {{ t('保存', 'Save', '保存') }}
           </button>
-          <span v-if="profileSaved" class="text-green-600 text-sm">{{ t('已保存', 'Saved', '已保存') }}</span>
+          <span v-if="profileSaved" class="text-green-600 text-sm font-bold">{{ t('已保存', 'Saved', '已保存') }}</span>
         </div>
       </div>
     </div>
 
     <!-- Bank Accounts -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-      <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ t('銀行賬戶', 'Bank Accounts', '银行账户') }}</h3>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('銀行賬戶', 'Bank Accounts', '银行账户') }}</h3>
 
       <!-- Saved accounts list -->
-      <div v-if="bankAccounts.length > 0" class="space-y-3 mb-4">
-        <div v-for="(acct, idx) in bankAccounts" :key="idx" class="flex items-center justify-between border border-slate-100 rounded-lg px-4 py-3">
-          <div class="text-sm">
-            <span class="font-medium text-slate-700">{{ acct.bankName }}</span>
-            <span class="text-slate-400 mx-2">|</span>
+      <div v-if="bankAccounts.length > 0" class="space-y-3 mb-5">
+        <div v-for="(acct, idx) in bankAccounts" :key="idx" class="flex items-center justify-between border-2 border-slate-200 rounded-xl px-5 py-4 hover:border-slate-300 transition-colors">
+          <div class="text-base">
+            <span class="font-bold text-slate-800">{{ acct.bankName }}</span>
+            <span class="text-slate-300 mx-3">|</span>
             <span class="font-mono text-slate-500">{{ maskAccount(acct.accountNumber) }}</span>
-            <span class="text-slate-400 mx-2">|</span>
+            <span class="text-slate-300 mx-3">|</span>
             <span class="text-slate-500">{{ acct.currency }}</span>
-            <span class="text-slate-400 mx-2">|</span>
+            <span class="text-slate-300 mx-3">|</span>
             <span class="text-slate-500">{{ acct.holderName }}</span>
           </div>
-          <button class="text-xs text-red-500 hover:text-red-700 font-medium" @click="deleteBankAccount(idx)">{{ t('刪除', 'Delete', '删除') }}</button>
+          <button class="text-sm text-red-600 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors" @click="deleteBankAccount(idx)">{{ t('刪除', 'Delete', '删除') }}</button>
         </div>
       </div>
-      <div v-else class="text-sm text-slate-400 mb-4">{{ t('暫無銀行賬戶', 'No bank accounts saved', '暂无银行账户') }}</div>
+      <div v-else class="text-base text-slate-400 mb-5">{{ t('暫無銀行賬戶', 'No bank accounts saved', '暂无银行账户') }}</div>
 
       <!-- Add bank account button -->
-      <button v-if="!showBankForm" class="px-4 py-2 border border-blue-500 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors" @click="showBankForm = true">
+      <button v-if="!showBankForm" class="px-5 py-3 border-2 border-blue-600 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors" @click="showBankForm = true">
         {{ t('添加銀行賬戶', 'Add Bank Account', '添加银行账户') }}
       </button>
 
       <!-- Add bank account form -->
-      <div v-if="showBankForm" class="border border-slate-200 rounded-lg p-4 space-y-3">
+      <div v-if="showBankForm" class="border-2 border-slate-200 rounded-2xl p-6 space-y-4 bg-slate-50">
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('銀行名稱', 'Bank Name', '银行名称') }}</label>
-          <select v-model="newBank.bankName" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('銀行名稱', 'Bank Name', '银行名称') }}</label>
+          <select v-model="newBank.bankName" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
             <option value="" disabled>{{ t('請選擇', 'Select', '请选择') }}</option>
             <option v-for="b in hkBanks" :key="b" :value="b">{{ b }}</option>
           </select>
         </div>
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('賬戶號碼', 'Account Number', '账户号码') }}</label>
-          <input v-model="newBank.accountNumber" type="text" inputmode="numeric" :placeholder="t('9-12位數字', '9-12 digits', '9-12位数字')" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('賬戶號碼', 'Account Number', '账户号码') }}</label>
+          <input v-model="newBank.accountNumber" type="text" inputmode="numeric" :placeholder="t('9-12位數字', '9-12 digits', '9-12位数字')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('幣種', 'Currency', '币种') }}</label>
-          <select v-model="newBank.currency" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('幣種', 'Currency', '币种') }}</label>
+          <select v-model="newBank.currency" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
             <option value="HKD">HKD</option>
             <option value="CNY">CNY</option>
             <option value="USD">USD</option>
           </select>
         </div>
         <div>
-          <label class="text-xs text-slate-500 block mb-1">{{ t('持有人姓名', 'Account Holder Name', '持有人姓名') }}</label>
-          <input v-model="newBank.holderName" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('持有人姓名', 'Account Holder Name', '持有人姓名') }}</label>
+          <input v-model="newBank.holderName" type="text" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
-        <p v-if="bankFormError" class="text-red-500 text-xs">{{ bankFormError }}</p>
-        <div class="flex gap-2">
-          <button class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors" @click="saveBankAccount">
+        <p v-if="bankFormError" class="text-red-600 text-sm font-semibold">{{ bankFormError }}</p>
+        <div class="flex gap-3 pt-1">
+          <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all" @click="saveBankAccount">
             {{ t('保存', 'Save', '保存') }}
           </button>
-          <button class="px-5 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors" @click="showBankForm = false; bankFormError = ''">
+          <button class="px-6 py-3 border-2 border-slate-300 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="showBankForm = false; bankFormError = ''">
             {{ t('取消', 'Cancel', '取消') }}
           </button>
         </div>
@@ -172,46 +175,46 @@ function maskAccount(num: string) {
     </div>
 
     <!-- Language -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-      <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ t('語言設定', 'Language', '语言设定') }}</h3>
-      <div class="grid grid-cols-2 gap-3">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('語言設定', 'Language', '语言设定') }}</h3>
+      <div class="grid grid-cols-2 gap-4">
         <button v-for="l in ([
           { mode: 'zh-TW' as LangMode, label: '繁體中文' },
           { mode: 'zh-CN' as LangMode, label: '简体中文' },
           { mode: 'en' as LangMode, label: 'English' },
           { mode: 'bilingual' as LangMode, label: '雙語 Bilingual' },
         ])" :key="l.mode"
-          class="px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors"
-          :class="langMode === l.mode ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'"
+          class="px-5 py-3.5 rounded-xl text-base font-bold border-2 transition-all"
+          :class="langMode === l.mode ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'"
           @click="setLang(l.mode)"
         >{{ l.label }}</button>
       </div>
     </div>
 
     <!-- Trading Preferences -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-      <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ t('交易偏好', 'Trading Preferences', '交易偏好') }}</h3>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-slate-600">{{ t('下單前確認', 'Confirm Before Order', '下单前确认') }}</span>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('交易偏好', 'Trading Preferences', '交易偏好') }}</h3>
+      <div class="space-y-5">
+        <div class="flex items-center justify-between py-1">
+          <span class="text-base text-slate-700 font-medium">{{ t('下單前確認', 'Confirm Before Order', '下单前确认') }}</span>
           <button
-            class="w-10 h-5.5 rounded-full transition-colors relative"
+            class="w-12 h-7 rounded-full transition-colors relative"
             :class="confirmBeforeOrder ? 'bg-blue-600' : 'bg-slate-300'"
             @click="confirmBeforeOrder = !confirmBeforeOrder"
           >
-            <span class="absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform" :class="confirmBeforeOrder ? 'left-5' : 'left-0.5'" />
+            <span class="absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform" :class="confirmBeforeOrder ? 'left-5.5' : 'left-0.5'" />
           </button>
         </div>
         <div>
-          <label class="text-sm text-slate-600 block mb-1.5">{{ t('預設委託類型', 'Default Order Type', '默认委托类型') }}</label>
-          <select v-model="defaultOrderType" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+          <label class="text-base text-slate-700 font-medium block mb-2">{{ t('預設委託類型', 'Default Order Type', '默认委托类型') }}</label>
+          <select v-model="defaultOrderType" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
             <option value="limit">{{ t('限價單', 'Limit', '限价单') }}</option>
             <option value="market">{{ t('市價單', 'Market', '市价单') }}</option>
           </select>
         </div>
         <div>
-          <label class="text-sm text-slate-600 block mb-1.5">{{ t('預設市場', 'Default Market', '默认市场') }}</label>
-          <select v-model="defaultMarket" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+          <label class="text-base text-slate-700 font-medium block mb-2">{{ t('預設市場', 'Default Market', '默认市场') }}</label>
+          <select v-model="defaultMarket" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
             <option value="HK">{{ t('港股', 'HK Stock', '港股') }}</option>
             <option value="US">{{ t('美股', 'US Stock', '美股') }}</option>
           </select>
@@ -220,35 +223,35 @@ function maskAccount(num: string) {
     </div>
 
     <!-- Notifications -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-      <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ t('通知設定', 'Notifications', '通知设定') }}</h3>
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-slate-600">{{ t('訂單成交通知', 'Order Fill Notifications', '订单成交通知') }}</span>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('通知設定', 'Notifications', '通知设定') }}</h3>
+      <div class="flex items-center justify-between py-1">
+        <span class="text-base text-slate-700 font-medium">{{ t('訂單成交通知', 'Order Fill Notifications', '订单成交通知') }}</span>
         <button
-          class="w-10 h-5.5 rounded-full transition-colors relative"
+          class="w-12 h-7 rounded-full transition-colors relative"
           :class="notifications ? 'bg-blue-600' : 'bg-slate-300'"
           @click="notifications = !notifications"
         >
-          <span class="absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform" :class="notifications ? 'left-5' : 'left-0.5'" />
+          <span class="absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform" :class="notifications ? 'left-5.5' : 'left-0.5'" />
         </button>
       </div>
     </div>
 
     <!-- Account Info -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-      <h3 class="text-sm font-semibold text-slate-700 mb-4">{{ t('帳戶資訊', 'Account Info', '账户信息') }}</h3>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-          <span class="text-slate-500">{{ t('帳戶號碼', 'Account No.', '账户号码') }}</span>
-          <span class="text-slate-700 font-mono">SEC-2026-00001</span>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('帳戶資訊', 'Account Info', '账户信息') }}</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center py-2 border-b border-slate-100">
+          <span class="text-base text-slate-500">{{ t('帳戶號碼', 'Account No.', '账户号码') }}</span>
+          <span class="text-base text-slate-800 font-mono font-bold">SEC-2026-00001</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-slate-500">{{ t('帳戶類型', 'Account Type', '账户类型') }}</span>
-          <span class="text-slate-700">{{ t('現金帳戶', 'Cash Account', '现金账户') }}</span>
+        <div class="flex justify-between items-center py-2 border-b border-slate-100">
+          <span class="text-base text-slate-500">{{ t('帳戶類型', 'Account Type', '账户类型') }}</span>
+          <span class="text-base text-slate-800 font-medium">{{ t('現金帳戶', 'Cash Account', '现金账户') }}</span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-slate-500">{{ t('開戶日期', 'Open Date', '开户日期') }}</span>
-          <span class="text-slate-700">2026-01-15</span>
+        <div class="flex justify-between items-center py-2">
+          <span class="text-base text-slate-500">{{ t('開戶日期', 'Open Date', '开户日期') }}</span>
+          <span class="text-base text-slate-800 font-medium">2026-01-15</span>
         </div>
       </div>
     </div>

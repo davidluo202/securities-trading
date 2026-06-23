@@ -13,7 +13,6 @@ const activeList = ref<'watchlist' | 'hsi' | 'hstech'>('watchlist')
 
 const FALLBACK_WATCHLIST = '0700.HK,9988.HK,9618.HK,1810.HK,0388.HK,2318.HK,3690.HK,AAPL,TSLA,NVDA'
 
-// Read from localStorage sec-watchlist (newest first), fall back to default
 function getWatchlistSymbols(): string {
   try {
     const raw = localStorage.getItem('sec-watchlist')
@@ -113,7 +112,6 @@ const watchlist = computed(() =>
   }))
 )
 
-// Split into HK and non-HK for top movers display
 const hkStocks = computed(() => watchlist.value.filter(s => s.symbol.endsWith('.HK')).sort((a, b) => b.pct - a.pct).slice(0, 5))
 const usStocks = computed(() => watchlist.value.filter(s => !s.symbol.includes('.')).sort((a, b) => b.pct - a.pct).slice(0, 5))
 
@@ -129,68 +127,71 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <h2 class="text-xl font-semibold text-slate-800">{{ t('行情報價', 'Market', '行情报价') }}</h2>
+  <div class="space-y-8">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900">{{ t('行情報價', 'Market', '行情报价') }}</h2>
+      <p class="text-sm text-slate-500 mt-1">{{ t('即時行情和自選股列表', 'Real-time quotes and watchlist', '即时行情和自选股列表') }}</p>
+    </div>
 
     <!-- Top Movers: HK + US -->
-    <div v-if="!loading" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div v-if="!loading" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- HK Top -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <h3 class="text-sm font-semibold text-slate-700">{{ t('港股排行', 'HK Top Movers', '港股排行') }}</h3>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-blue-800">
+          <h3 class="text-base font-bold text-white">{{ t('港股排行', 'HK Top Movers', '港股排行') }}</h3>
         </div>
-        <div class="divide-y divide-slate-50">
-          <div v-for="(s, idx) in hkStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
-            <span class="w-6 text-xs font-bold text-slate-400">{{ idx + 1 }}</span>
+        <div class="divide-y divide-slate-100">
+          <div v-for="(s, idx) in hkStocks" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
+            <span class="w-7 text-sm font-bold text-slate-400">{{ idx + 1 }}</span>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-slate-800 truncate">{{ s.name }}</p>
+              <p class="text-base font-semibold text-slate-800 truncate">{{ s.name }}</p>
               <p class="text-xs text-slate-400">{{ s.symbol }}</p>
             </div>
-            <span class="text-sm font-medium text-slate-700 mx-3">{{ s.price.toFixed(2) }}</span>
+            <span class="text-base font-semibold text-slate-800 mx-4">{{ s.price.toFixed(2) }}</span>
             <svg class="w-20 h-8 shrink-0 mx-2" viewBox="0 0 80 30">
-              <polyline fill="none" :stroke="s.pct >= 0 ? '#22c55e' : '#ef4444'" stroke-width="1.5" :points="s.spark" />
+              <polyline fill="none" :stroke="s.pct >= 0 ? '#059669' : '#dc2626'" stroke-width="1.5" :points="s.spark" />
             </svg>
-            <span class="text-sm font-semibold min-w-[60px] text-right" :class="s.pct >= 0 ? 'text-green-600' : 'text-red-500'">
+            <span class="text-sm font-bold min-w-[70px] text-right px-2.5 py-1 rounded-lg" :class="s.pct >= 0 ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'">
               {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
             </span>
           </div>
-          <div v-if="hkStocks.length === 0" class="px-4 py-4 text-sm text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
+          <div v-if="hkStocks.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
         </div>
       </div>
 
       <!-- US Top -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50">
-          <h3 class="text-sm font-semibold text-slate-700">{{ t('美股排行', 'US Top Movers', '美股排行') }}</h3>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-emerald-600 to-emerald-800">
+          <h3 class="text-base font-bold text-white">{{ t('美股排行', 'US Top Movers', '美股排行') }}</h3>
         </div>
-        <div class="divide-y divide-slate-50">
-          <div v-for="(s, idx) in usStocks" :key="s.symbol" class="flex items-center px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
-            <span class="w-6 text-xs font-bold text-slate-400">{{ idx + 1 }}</span>
+        <div class="divide-y divide-slate-100">
+          <div v-for="(s, idx) in usStocks" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
+            <span class="w-7 text-sm font-bold text-slate-400">{{ idx + 1 }}</span>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-slate-800 truncate">{{ s.name }}</p>
+              <p class="text-base font-semibold text-slate-800 truncate">{{ s.name }}</p>
               <p class="text-xs text-slate-400">{{ s.symbol }}</p>
             </div>
-            <span class="text-sm font-medium text-slate-700 mx-3">{{ s.price.toFixed(2) }}</span>
+            <span class="text-base font-semibold text-slate-800 mx-4">{{ s.price.toFixed(2) }}</span>
             <svg class="w-20 h-8 shrink-0 mx-2" viewBox="0 0 80 30">
-              <polyline fill="none" :stroke="s.pct >= 0 ? '#22c55e' : '#ef4444'" stroke-width="1.5" :points="s.spark" />
+              <polyline fill="none" :stroke="s.pct >= 0 ? '#059669' : '#dc2626'" stroke-width="1.5" :points="s.spark" />
             </svg>
-            <span class="text-sm font-semibold min-w-[60px] text-right" :class="s.pct >= 0 ? 'text-green-600' : 'text-red-500'">
+            <span class="text-sm font-bold min-w-[70px] text-right px-2.5 py-1 rounded-lg" :class="s.pct >= 0 ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'">
               {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
             </span>
           </div>
-          <div v-if="usStocks.length === 0" class="px-4 py-4 text-sm text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
+          <div v-if="usStocks.length === 0" class="px-6 py-6 text-base text-slate-400 text-center">{{ t('暫無數據', 'No data', '暂无数据') }}</div>
         </div>
       </div>
     </div>
-    <div v-else class="text-sm text-slate-400 py-4 text-center">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
+    <div v-else class="text-base text-slate-400 py-6 text-center">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
 
     <!-- Watchlist Tabs -->
-    <div class="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+    <div class="flex gap-2">
       <button
         v-for="tab in (['watchlist', 'hsi', 'hstech'] as const)"
         :key="tab"
-        class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
-        :class="activeList === tab ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+        class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
+        :class="activeList === tab ? 'bg-blue-700 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
         @click="activeList = tab"
       >
         {{ tab === 'watchlist' ? t('自選股', 'Watchlist', '自选股') : tab === 'hsi' ? t('恒指成份股', 'HSI', '恒指成份股') : t('科技指數', 'HS Tech', '科技指数') }}
@@ -198,43 +199,43 @@ onUnmounted(() => {
     </div>
 
     <!-- Watchlist Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-base">
           <thead>
-            <tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-4 py-3 font-medium">{{ t('代碼', 'Symbol', '代码') }}</th>
-              <th class="px-4 py-3 font-medium">{{ t('名稱', 'Name', '名称') }}</th>
-              <th class="px-4 py-3 font-medium text-right">{{ t('現價', 'Price', '现价') }}</th>
-              <th class="px-4 py-3 font-medium text-center">{{ t('走勢', 'Trend', '走势') }}</th>
-              <th class="px-4 py-3 font-medium text-right">{{ t('漲跌', 'Change', '涨跌') }}</th>
-              <th class="px-4 py-3 font-medium text-right">{{ t('漲跌幅', '%', '涨跌幅') }}</th>
-              <th class="px-4 py-3 font-medium text-right">{{ t('成交量', 'Volume', '成交量') }}</th>
+            <tr class="text-left text-sm text-slate-500 border-b border-slate-200 bg-slate-50">
+              <th class="px-6 py-4 font-semibold">{{ t('代碼', 'Symbol', '代码') }}</th>
+              <th class="px-6 py-4 font-semibold">{{ t('名稱', 'Name', '名称') }}</th>
+              <th class="px-6 py-4 font-semibold text-right">{{ t('現價', 'Price', '现价') }}</th>
+              <th class="px-6 py-4 font-semibold text-center">{{ t('走勢', 'Trend', '走势') }}</th>
+              <th class="px-6 py-4 font-semibold text-right">{{ t('漲跌', 'Change', '涨跌') }}</th>
+              <th class="px-6 py-4 font-semibold text-right">{{ t('漲跌幅', '%', '涨跌幅') }}</th>
+              <th class="px-6 py-4 font-semibold text-right">{{ t('成交量', 'Volume', '成交量') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="7" class="px-4 py-6 text-center text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</td>
+              <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</td>
             </tr>
             <tr v-else-if="watchlist.length === 0">
-              <td colspan="7" class="px-4 py-6 text-center text-slate-400">{{ t('暫無數據', 'No data', '暂无数据') }}</td>
+              <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('暫無數據', 'No data', '暂无数据') }}</td>
             </tr>
-            <tr v-for="s in watchlist" v-else :key="s.symbol" class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" @click="goStock(s.symbol)">
-              <td class="px-4 py-3 font-medium text-blue-600">{{ s.symbol }}</td>
-              <td class="px-4 py-3 text-slate-600">{{ s.name }}</td>
-              <td class="px-4 py-3 text-right font-medium">{{ s.price > 0 ? s.price.toFixed(2) : '--' }}</td>
-              <td class="px-4 py-3 text-center">
+            <tr v-for="(s, idx) in watchlist" v-else :key="s.symbol" class="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" :class="idx % 2 === 1 ? 'bg-slate-50/50' : ''" @click="goStock(s.symbol)">
+              <td class="px-6 py-4 font-bold text-blue-700">{{ s.symbol }}</td>
+              <td class="px-6 py-4 text-slate-700">{{ s.name }}</td>
+              <td class="px-6 py-4 text-right font-bold">{{ s.price > 0 ? s.price.toFixed(2) : '--' }}</td>
+              <td class="px-6 py-4 text-center">
                 <svg v-if="s.price > 0" class="w-20 h-8 inline-block" viewBox="0 0 80 30">
-                  <polyline fill="none" :stroke="s.pct >= 0 ? '#22c55e' : '#ef4444'" stroke-width="1.5" :points="s.spark" />
+                  <polyline fill="none" :stroke="s.pct >= 0 ? '#059669' : '#dc2626'" stroke-width="1.5" :points="s.spark" />
                 </svg>
               </td>
-              <td class="px-4 py-3 text-right" :class="s.change >= 0 ? 'text-green-600' : 'text-red-500'">
+              <td class="px-6 py-4 text-right font-semibold" :class="s.change >= 0 ? 'text-green-600' : 'text-red-600'">
                 {{ s.price > 0 ? (s.change >= 0 ? '+' : '') + s.change.toFixed(2) : '--' }}
               </td>
-              <td class="px-4 py-3 text-right" :class="s.pct >= 0 ? 'text-green-600' : 'text-red-500'">
+              <td class="px-6 py-4 text-right font-semibold" :class="s.pct >= 0 ? 'text-green-600' : 'text-red-600'">
                 {{ s.price > 0 ? (s.pct >= 0 ? '+' : '') + s.pct.toFixed(2) + '%' : '--' }}
               </td>
-              <td class="px-4 py-3 text-right text-slate-500">{{ s.volume }}</td>
+              <td class="px-6 py-4 text-right text-slate-500">{{ s.volume }}</td>
             </tr>
           </tbody>
         </table>

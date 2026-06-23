@@ -80,7 +80,6 @@ const notifications = ref<Notification[]>([
 const readIds = ref<string[]>([])
 const STORAGE_KEY = 'sec-notif-read'
 
-// Default read IDs: items 1 and 3 are read by default
 const DEFAULT_READ = ['1', '3']
 
 onMounted(() => {
@@ -106,49 +105,56 @@ function markAsRead(id: string) {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <h1 class="text-xl font-bold text-slate-800">{{ t('系統通知', 'Notifications', '系统通知') }}</h1>
+  <div class="space-y-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">{{ t('系統通知', 'Notifications', '系统通知') }}</h1>
+      <p class="text-sm text-slate-500 mt-1">{{ t('查看系統消息和待辦事項', 'View system messages and action items', '查看系统消息和待办事项') }}</p>
+    </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 divide-y divide-slate-100">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-100 overflow-hidden">
       <div
         v-for="notif in notifications"
         :key="notif.id"
-        class="px-5 py-4 cursor-pointer transition-colors hover:bg-slate-50"
+        class="px-6 py-5 cursor-pointer transition-colors hover:bg-slate-50"
         :class="{
-          'bg-blue-50 border-l-4 border-l-blue-500': !isRead(notif.id),
-          'border-l-4 border-l-transparent': isRead(notif.id),
+          'bg-blue-50/60': !isRead(notif.id),
         }"
         @click="markAsRead(notif.id)"
       >
         <div class="flex items-start justify-between gap-4">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
+          <div class="flex items-start gap-4 flex-1 min-w-0">
+            <!-- Status Indicator -->
+            <div class="pt-1 shrink-0">
               <span
-                class="text-xs px-2 py-0.5 rounded-full"
-                :class="!isRead(notif.id) ? 'bg-blue-100 text-blue-700 font-semibold' : 'bg-slate-100 text-slate-500'"
-              >
-                {{ t(notif.sender, notif.senderEn, notif.sender) }}
-              </span>
-              <span class="text-xs text-slate-400">{{ notif.date }}</span>
+                class="block w-2.5 h-2.5 rounded-full"
+                :class="!isRead(notif.id) ? 'bg-blue-600' : 'bg-slate-200'"
+              />
             </div>
-            <p
-              class="text-sm text-slate-800"
-              :class="{ 'font-bold': !isRead(notif.id) }"
-            >
-              {{ t(notif.subject, notif.subjectEn, notif.subjectCn) }}
-            </p>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 mb-1.5">
+                <span
+                  class="text-xs px-2.5 py-1 rounded-lg font-bold"
+                  :class="!isRead(notif.id) ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'"
+                >
+                  {{ t(notif.sender, notif.senderEn, notif.sender) }}
+                </span>
+                <span class="text-sm text-slate-400">{{ notif.date }}</span>
+              </div>
+              <p
+                class="text-base text-slate-800"
+                :class="{ 'font-bold': !isRead(notif.id), 'font-medium': isRead(notif.id) }"
+              >
+                {{ t(notif.subject, notif.subjectEn, notif.subjectCn) }}
+              </p>
+            </div>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-3 shrink-0">
             <span
               v-if="notif.actionRequired"
-              class="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600 font-medium whitespace-nowrap"
+              class="text-sm px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 font-bold whitespace-nowrap border border-amber-200"
             >
               {{ t(notif.actionText || '', notif.actionTextEn || '', notif.actionTextCn || '') }}
             </span>
-            <span
-              v-if="!isRead(notif.id)"
-              class="w-2 h-2 rounded-full bg-blue-500 shrink-0"
-            />
           </div>
         </div>
       </div>

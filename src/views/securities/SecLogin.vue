@@ -145,26 +145,26 @@ function handleRegister() {
 
 <template>
   <div class="min-h-screen bg-gray-100 flex flex-col">
-    <!-- Top bar -->
-    <div class="flex justify-between items-center px-6 py-3">
-      <select
-        :value="langMode"
-        @change="setLang(($event.target as HTMLSelectElement).value as LangMode)"
-        class="text-sm border border-gray-200 rounded px-2 py-1 bg-white text-gray-600"
-      >
-        <option v-for="opt in langOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
-      <button
-        class="px-3 py-1.5 rounded-full text-xs font-semibold"
-        :class="paperMode ? 'bg-yellow-400 text-yellow-900' : 'bg-blue-600 text-white'"
-        @click="toggleMode"
-      >
-        {{ paperMode ? t('模擬盤 Paper', 'Paper Trade', '模拟盘 Paper') : t('實盤 Live', 'Live Trade', '实盘 Live') }}
-      </button>
-    </div>
-
     <main class="flex-1 flex items-center justify-center px-4 py-8">
-      <div class="w-full max-w-lg rounded-2xl shadow-xl p-8 md:p-12" :class="cardClass">
+      <div class="w-full max-w-lg rounded-2xl shadow-xl p-8 md:p-12 relative" :class="cardClass">
+        <!-- Language + Paper mode inside card -->
+        <div class="flex justify-between items-center mb-6">
+          <select
+            :value="langMode"
+            @change="setLang(($event.target as HTMLSelectElement).value as LangMode)"
+            class="text-base border-2 border-gray-300 rounded-xl px-3 py-2 bg-white text-gray-700 font-medium"
+          >
+            <option v-for="opt in langOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <button
+            class="px-5 py-2.5 rounded-xl text-base font-bold transition-colors"
+            :class="paperMode ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500' : 'bg-blue-600 text-white hover:bg-blue-700'"
+            @click="toggleMode"
+          >
+            {{ paperMode ? t('模擬盤 Paper', 'Paper Trade', '模拟盘 Paper') : t('實盤 Live', 'Live Trade', '实盘 Live') }}
+          </button>
+        </div>
+
         <!-- Logo & Title -->
         <div class="text-center mb-10">
           <img :src="logoSrc" alt="CM Financial" class="h-20 w-auto mx-auto mb-6" />

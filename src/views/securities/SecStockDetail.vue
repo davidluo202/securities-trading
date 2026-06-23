@@ -127,12 +127,12 @@ function initChart() {
   })
 
   candleSeries = chart.addSeries(CandlestickSeries, {
-    upColor: '#22c55e',
-    downColor: '#ef4444',
-    borderUpColor: '#22c55e',
-    borderDownColor: '#ef4444',
-    wickUpColor: '#22c55e',
-    wickDownColor: '#ef4444',
+    upColor: '#059669',
+    downColor: '#dc2626',
+    borderUpColor: '#059669',
+    borderDownColor: '#dc2626',
+    wickUpColor: '#059669',
+    wickDownColor: '#dc2626',
   })
 
   volumeSeries = chart.addSeries(HistogramSeries, {
@@ -172,7 +172,6 @@ function initChart() {
     lastValueVisible: false,
   })
 
-  // Resize observer
   resizeObserver = new ResizeObserver(() => {
     if (chart && chartContainerRef.value) {
       chart.applyOptions({ width: chartContainerRef.value.clientWidth })
@@ -198,7 +197,7 @@ async function loadChartData() {
   const volumeData = candles.map(c => ({
     time: c.time as Time,
     value: c.volume,
-    color: c.close >= c.open ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)',
+    color: c.close >= c.open ? 'rgba(5,150,105,0.4)' : 'rgba(220,38,38,0.4)',
   }))
   volumeSeries.setData(volumeData)
 
@@ -251,11 +250,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-4">
       <button
-        class="p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-600"
+        class="p-2.5 rounded-xl hover:bg-slate-100 transition-colors text-slate-600 border border-slate-200"
         @click="goBack"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,55 +263,53 @@ onUnmounted(() => {
       </button>
       <div v-if="!loading && quote">
         <div class="flex items-center gap-3">
-          <h2 class="text-xl font-semibold text-slate-800">{{ quote.name || symbol }}</h2>
-          <span class="text-sm text-slate-400">{{ symbol }}</span>
+          <h2 class="text-2xl font-bold text-slate-900">{{ quote.name || symbol }}</h2>
+          <span class="text-sm text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">{{ symbol }}</span>
         </div>
-        <div class="flex items-center gap-3 mt-1">
-          <span class="text-2xl font-bold" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-500'">
+        <div class="flex items-center gap-4 mt-2">
+          <span class="text-3xl font-bold tracking-tight" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-600'">
             {{ quote.price > 0 ? quote.price.toFixed(2) : '--' }}
           </span>
-          <span class="text-sm font-medium" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-500'">
-            {{ quote.price > 0 ? `${quote.change >= 0 ? '+' : ''}${quote.change.toFixed(2)} (${quote.changePercent >= 0 ? '+' : ''}${quote.changePercent.toFixed(2)}%)` : '--' }}
+          <span v-if="quote.price > 0" class="text-sm font-bold px-3 py-1.5 rounded-xl" :class="quote.change >= 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'">
+            {{ quote.change >= 0 ? '+' : '' }}{{ quote.change.toFixed(2) }} ({{ quote.changePercent >= 0 ? '+' : '' }}{{ quote.changePercent.toFixed(2) }}%)
           </span>
         </div>
       </div>
-      <div v-else-if="loading" class="text-sm text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
+      <div v-else-if="loading" class="text-base text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</div>
     </div>
 
     <!-- Period Tabs + Chart -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-      <div class="flex items-center gap-1 px-4 pt-3 pb-2">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="flex items-center gap-1.5 px-6 pt-4 pb-3 border-b border-slate-100">
         <button
           v-for="p in periods"
           :key="p.key"
-          class="px-3 py-1 rounded text-sm font-medium transition-colors"
+          class="px-3.5 py-1.5 rounded-xl text-sm font-bold transition-all"
           :class="activePeriod === p.key
-            ? 'bg-blue-50 text-blue-600'
-            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+            ? 'bg-blue-700 text-white shadow-sm'
+            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'"
           @click="switchPeriod(p.key)"
         >
           {{ p.label() }}
         </button>
-        <div class="ml-auto flex items-center gap-3 text-xs text-slate-400">
-          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-amber-500 rounded"></span>MA10</span>
-          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-violet-500 rounded"></span>MA20</span>
-          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-cyan-500 rounded"></span>MA30</span>
-          <span class="flex items-center gap-1"><span class="inline-block w-3 h-0.5 bg-pink-500 rounded"></span>MA60</span>
+        <div class="ml-auto flex items-center gap-4 text-xs text-slate-400">
+          <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-0.5 bg-amber-500 rounded"></span>MA10</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-0.5 bg-violet-500 rounded"></span>MA20</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-0.5 bg-cyan-500 rounded"></span>MA30</span>
+          <span class="flex items-center gap-1.5"><span class="inline-block w-4 h-0.5 bg-pink-500 rounded"></span>MA60</span>
         </div>
       </div>
       <div
         ref="chartContainerRef"
-        class="h-[300px] md:h-[400px] w-full"
+        class="h-[320px] md:h-[420px] w-full"
       ></div>
     </div>
 
     <!-- OHLC Data Grid -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-      <div class="grid grid-cols-3 lg:grid-cols-6 gap-4">
-        <div v-for="item in ohlcItems" :key="item.label" class="text-center">
-          <p class="text-xs text-slate-500 mb-1">{{ item.label }}</p>
-          <p class="text-sm font-semibold text-slate-800">{{ item.value }}</p>
-        </div>
+    <div class="grid grid-cols-3 lg:grid-cols-6 gap-4">
+      <div v-for="item in ohlcItems" :key="item.label" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center">
+        <p class="text-sm text-slate-500 mb-2">{{ item.label }}</p>
+        <p class="text-lg font-bold text-slate-900">{{ item.value }}</p>
       </div>
     </div>
   </div>
