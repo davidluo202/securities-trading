@@ -11,6 +11,58 @@ function goStock(symbol: string) {
 
 const activeSection = ref<'movers' | 'watchlist'>('movers')
 
+// Add-to-watchlist modal
+const showAddModal = ref(false)
+const addSearchQuery = ref('')
+const addSearchResults = ref<{ symbol: string; name: string; pinyin: string }[]>([])
+let addSearchTimer: ReturnType<typeof setTimeout> | null = null
+const toastMsg = ref('')
+const showToastFlag = ref(false)
+
+function onAddSearchInput() {
+  if (addSearchTimer) clearTimeout(addSearchTimer)
+  const q = addSearchQuery.value.trim()
+  if (!q) { addSearchResults.value = []; return }
+  addSearchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/stock-search?q=${encodeURIComponent(q)}`)
+      if (res.ok) {
+        addSearchResults.value = await res.json()
+      }
+    } catch { /* silent */ }
+  }, 300)
+}
+
+function getMarketTag(symbol: string): string {
+  if (symbol.endsWith('.HK')) return 'HK'
+  if (symbol.endsWith('.SH') || symbol.endsWith('.SZ')) return 'A'
+  return 'US'
+}
+
+function addStockToWatchlist(item: { symbol: string; name: string }) {
+  let list: { symbol: string; name: string }[] = JSON.parse(localStorage.getItem('sec-watchlist') || '[]')
+  list = list.filter(s => s.symbol !== item.symbol)
+  list.unshift({ symbol: item.symbol, name: item.name })
+  localStorage.setItem('sec-watchlist', JSON.stringify(list))
+  watchlistVersion.value++
+  fetchAll()
+  showAddModal.value = false
+  addSearchQuery.value = ''
+  addSearchResults.value = []
+  // Toast
+  toastMsg.value = t('已加入自選股 ✓', 'Added to watchlist ✓', '已加入自选股 ✓')
+  showToastFlag.value = true
+  setTimeout(() => { showToastFlag.value = false }, 2000)
+}
+
+function removeFromWatchlist(symbol: string) {
+  let list: { symbol: string; name: string }[] = JSON.parse(localStorage.getItem('sec-watchlist') || '[]')
+  list = list.filter(s => s.symbol !== symbol)
+  localStorage.setItem('sec-watchlist', JSON.stringify(list))
+  watchlistVersion.value++
+  fetchAll()
+}
+
 const FALLBACK_WATCHLIST = '0700.HK,9988.HK,9618.HK,1810.HK,0388.HK,2318.HK,3690.HK,AAPL,TSLA,NVDA,600519.SH,601318.SH,000001.SZ,300750.SZ,002594.SZ,MSFT,GOOGL'
 
 function getWatchlistSymbols(): string {
@@ -156,7 +208,9 @@ async function fetchTopMovers() {
 }
 
 // Watchlist: only symbols from user's watchlist / fallback
+const watchlistVersion = ref(0)
 const watchlist = computed(() => {
+  void watchlistVersion.value // reactive dependency
   const syms = getWatchlistSymbols().split(',').map(s => s.trim())
   return allItems.value.filter(s => syms.includes(s.symbol))
 })
@@ -275,6 +329,14 @@ onUnmounted(() => {
     <!-- Watchlist Table -->
     <div v-if="activeSection === 'watchlist'">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+          <h3 class="text-base font-bold text-slate-700">{{ t('自選股列表', 'Watchlist', '自选股列表') }}</h3>
+          <button
+            class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors text-lg font-bold"
+            @click="showAddModal = true"
+            :title="t('添加自選股', 'Add to Watchlist', '添加自选股')"
+          >+</button>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-base">
             <thead>
@@ -286,14 +348,15 @@ onUnmounted(() => {
                 <th class="px-6 py-4 font-semibold text-right">{{ t('漲跌', 'Change', '涨跌') }}</th>
                 <th class="px-6 py-4 font-semibold text-right">{{ t('漲跌幅', '%', '涨跌幅') }}</th>
                 <th class="px-6 py-4 font-semibold text-right">{{ t('成交量', 'Volume', '成交量') }}</th>
+                <th class="px-6 py-4 font-semibold text-center w-16">{{ t('操作', 'Action', '操作') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</td>
+                <td colspan="8" class="px-6 py-8 text-center text-slate-400">{{ t('載入中...', 'Loading...', '加载中...') }}</td>
               </tr>
               <tr v-else-if="watchlist.length === 0">
-                <td colspan="7" class="px-6 py-8 text-center text-slate-400">{{ t('暫無自選股，請在交易頁面添加', 'No watchlist stocks. Add from trading page.', '暂无自选股，请在交易页面添加') }}</td>
+                <td colspan="8" class="px-6 py-8 text-center text-slate-400">{{ t('暫無自選股，點擊 + 添加', 'No watchlist stocks. Click + to add.', '暂无自选股，点击 + 添加') }}</td>
               </tr>
               <tr v-for="(s, idx) in watchlist" v-else :key="s.symbol" class="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" :class="idx % 2 === 1 ? 'bg-slate-50/50' : ''" @click="goStock(s.symbol)">
                 <td class="px-6 py-4 font-bold text-blue-700">{{ s.symbol }}</td>
@@ -311,11 +374,82 @@ onUnmounted(() => {
                   {{ s.price > 0 ? (s.pct >= 0 ? '+' : '') + s.pct.toFixed(2) + '%' : '--' }}
                 </td>
                 <td class="px-6 py-4 text-right text-slate-500">{{ s.volume }}</td>
+                <td class="px-6 py-4 text-center">
+                  <button
+                    class="text-slate-400 hover:text-red-500 transition-colors"
+                    :title="t('刪除', 'Remove', '删除')"
+                    @click.stop="removeFromWatchlist(s.symbol)"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
+
+    <!-- Add Watchlist Modal -->
+    <Teleport to="body">
+      <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showAddModal = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 relative">
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+            <h3 class="text-lg font-bold text-slate-800">{{ t('添加自選股', 'Add to Watchlist', '添加自选股') }}</h3>
+            <button class="text-slate-400 hover:text-slate-600 transition-colors" @click="showAddModal = false; addSearchQuery = ''; addSearchResults = []">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <!-- Search Input -->
+          <div class="px-6 pt-4 pb-2">
+            <div class="flex border-2 border-slate-300 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+              <input
+                v-model="addSearchQuery"
+                type="text"
+                :placeholder="t('輸入股票代碼或名稱', 'Enter stock code or name', '输入股票代码或名称')"
+                class="flex-1 text-base outline-none text-slate-700 placeholder-slate-400 px-4 py-3"
+                @input="onAddSearchInput"
+              />
+              <button
+                class="px-4 py-3 bg-blue-700 text-white hover:bg-blue-800 transition-colors"
+                @click="onAddSearchInput"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              </button>
+            </div>
+          </div>
+          <!-- Search Results -->
+          <div class="max-h-72 overflow-y-auto px-2 pb-4">
+            <div v-if="addSearchResults.length === 0 && addSearchQuery.trim()" class="px-4 py-6 text-center text-slate-400 text-sm">
+              {{ t('未找到結果', 'No results found', '未找到结果') }}
+            </div>
+            <button
+              v-for="item in addSearchResults"
+              :key="item.symbol"
+              class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 text-base transition-colors rounded-xl"
+              @click="addStockToWatchlist(item)"
+            >
+              <span class="font-bold text-blue-700 min-w-[90px]">{{ item.symbol }}</span>
+              <span class="text-slate-700 flex-1 truncate">{{ item.name }}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold"
+                :class="{
+                  'bg-blue-100 text-blue-700': getMarketTag(item.symbol) === 'HK',
+                  'bg-red-100 text-red-700': getMarketTag(item.symbol) === 'A',
+                  'bg-emerald-100 text-emerald-700': getMarketTag(item.symbol) === 'US',
+                }"
+              >{{ getMarketTag(item.symbol) }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Toast -->
+    <Teleport to="body">
+      <div v-if="showToastFlag" class="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-xl text-white text-sm font-bold shadow-lg bg-emerald-600 transition-all">
+        {{ toastMsg }}
+      </div>
+    </Teleport>
   </div>
 </template>
