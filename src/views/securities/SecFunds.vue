@@ -34,6 +34,20 @@ const depositSubmitted = ref(false)
 
 function submitDeposit() {
   if (!depositAmount.value || parseFloat(depositAmount.value) <= 0) return
+  // Save to fund transactions (for history page)
+  try {
+    const txns = JSON.parse(localStorage.getItem('sec-fund-transactions') || '[]')
+    const now = new Date()
+    txns.unshift({
+      type: 'deposit',
+      amount: depositAmount.value,
+      currency: selectedCurrency.value,
+      status: 'pending',
+      date: now.toISOString().replace('T', ' ').slice(0, 19),
+      ref: `DEP-${now.getFullYear().toString().slice(2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(txns.length+1).padStart(4,'0')}`,
+    })
+    localStorage.setItem('sec-fund-transactions', JSON.stringify(txns))
+  } catch { /* silent */ }
   depositSubmitted.value = true
   setTimeout(() => {
     depositSubmitted.value = false
