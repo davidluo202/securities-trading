@@ -200,17 +200,16 @@ function handleRegister() {
 
           <div class="mb-5">
             <label class="block text-base font-bold text-gray-800 mb-2">{{ t('驗證碼', 'Captcha', '验证码') }}</label>
-            <div class="flex gap-3 items-center">
-              <input v-model="loginCaptcha" type="text" maxlength="4" :placeholder="t('請輸入驗證碼', 'Enter captcha', '请输入验证码')"
-                class="flex-1 border-2 border-gray-500 rounded-lg px-4 py-3.5 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 bg-white tracking-widest"
+            <div class="flex gap-2 items-center">
+              <input v-model="loginCaptcha" type="text" maxlength="4" :placeholder="t('驗證碼', 'Code', '验证码')"
+                class="w-28 border-2 border-gray-500 rounded-lg px-3 py-3 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 bg-white tracking-widest text-center"
                 @keyup.enter="handleLogin" />
               <img v-if="loginCaptchaImage" :src="loginCaptchaImage" alt="captcha"
-                class="h-12 rounded-lg border cursor-pointer" @click="loadCaptcha" />
-              <div v-else class="h-12 w-28 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500 cursor-pointer" @click="loadCaptcha">
-                {{ t('載入中...', 'Loading...', '加载中...') }}
+                class="h-11 rounded-lg border cursor-pointer shrink-0" @click="loadCaptcha" />
+              <div v-else class="h-11 w-24 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500 cursor-pointer shrink-0" @click="loadCaptcha">
+                {{ t('載入中', 'Load', '加载') }}
               </div>
             </div>
-            <p class="text-xs text-gray-400 mt-1">{{ t('點擊圖片可刷新驗證碼', 'Click image to refresh captcha', '点击图片可刷新验证码') }}</p>
           </div>
 
           <button
