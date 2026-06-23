@@ -202,7 +202,9 @@ function handleRegister() {
             <label class="block text-base font-bold text-gray-800 mb-2">{{ t('驗證碼', 'Captcha', '验证码') }}</label>
             <div class="flex gap-2 items-center">
               <input v-model="loginCaptcha" type="text" maxlength="4" :placeholder="t('驗證碼', 'Code', '验证码')"
-                class="w-28 border-2 border-gray-500 rounded-lg px-3 py-3 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 bg-white tracking-widest text-center"
+                class="w-28 border-2 border-gray-500 rounded-lg px-3 py-3 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 bg-white tracking-widest text-center uppercase"
+                autocapitalize="characters" style="text-transform: uppercase;"
+                @input="loginCaptcha = loginCaptcha.toUpperCase()"
                 @keyup.enter="handleLogin" />
               <img v-if="loginCaptchaImage" :src="loginCaptchaImage" alt="captcha"
                 class="h-11 rounded-lg border cursor-pointer shrink-0" @click="loadCaptcha" />
