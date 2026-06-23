@@ -1,84 +1,65 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-interface StockEntry {
-  symbol: string
-  name: string
-  pinyin: string
-}
-
-const STOCKS: StockEntry[] = [
-  // HK stocks
-  { symbol: '0700.HK', name: '腾讯控股', pinyin: 'txkg' },
-  { symbol: '9988.HK', name: '阿里巴巴-SW', pinyin: 'albb' },
-  { symbol: '9618.HK', name: '京东集团-SW', pinyin: 'jdjt' },
-  { symbol: '1810.HK', name: '小米集团-W', pinyin: 'xmjt' },
-  { symbol: '0388.HK', name: '香港交易所', pinyin: 'xgjys' },
-  { symbol: '2318.HK', name: '中国平安', pinyin: 'zgpa' },
-  { symbol: '3690.HK', name: '美团-W', pinyin: 'mt' },
-  { symbol: '0005.HK', name: '汇丰控股', pinyin: 'hfkg' },
-  { symbol: '0941.HK', name: '中国移动', pinyin: 'zgyd' },
-  { symbol: '1024.HK', name: '快手-W', pinyin: 'ks' },
-  { symbol: '9999.HK', name: '网易-S', pinyin: 'wy' },
-  { symbol: '0175.HK', name: '吉利汽车', pinyin: 'jlqc' },
-  { symbol: '2269.HK', name: '药明生物', pinyin: 'ymsw' },
-  { symbol: '0027.HK', name: '银河娱乐', pinyin: 'yhyl' },
-  { symbol: '1211.HK', name: '比亚迪股份', pinyin: 'bydgf' },
-  { symbol: '0883.HK', name: '中国海洋石油', pinyin: 'zghysy' },
-  { symbol: '0016.HK', name: '新鸿基地产', pinyin: 'xhjdc' },
-  { symbol: '0001.HK', name: '长和', pinyin: 'ch' },
-  { symbol: '9888.HK', name: '百度集团-SW', pinyin: 'bdjt' },
-  { symbol: '2020.HK', name: '安踏体育', pinyin: 'atty' },
-  // US stocks
-  { symbol: 'AAPL', name: '苹果', pinyin: 'pg' },
-  { symbol: 'TSLA', name: '特斯拉', pinyin: 'tsl' },
-  { symbol: 'NVDA', name: '英伟达', pinyin: 'ywd' },
-  { symbol: 'MSFT', name: '微软', pinyin: 'wr' },
-  { symbol: 'GOOGL', name: '谷歌', pinyin: 'gg' },
-  { symbol: 'AMZN', name: '亚马逊', pinyin: 'yms' },
-  { symbol: 'META', name: '脸书', pinyin: 'ls' },
-  { symbol: 'NFLX', name: '奈飞', pinyin: 'nf' },
-  { symbol: 'BABA', name: '阿里巴巴', pinyin: 'albb' },
-  { symbol: 'JD', name: '京东', pinyin: 'jd' },
-  { symbol: 'PDD', name: '拼多多', pinyin: 'pdd' },
-  { symbol: 'NIO', name: '蔚来', pinyin: 'wl' },
-  { symbol: 'XPEV', name: '小鹏汽车', pinyin: 'xpqc' },
-  { symbol: 'LI', name: '理想汽车', pinyin: 'lxqc' },
-  { symbol: 'BIDU', name: '百度', pinyin: 'bd' },
-  // A-share stocks
-  { symbol: '600519.SH', name: '贵州茅台', pinyin: 'gzmt' },
-  { symbol: '601318.SH', name: '中国平安', pinyin: 'zgpa' },
-  { symbol: '000001.SZ', name: '平安银行', pinyin: 'payh' },
-  { symbol: '600036.SH', name: '招商银行', pinyin: 'zsyh' },
-  { symbol: '601012.SH', name: '隆基绿能', pinyin: 'ljln' },
-  { symbol: '000858.SZ', name: '五粮液', pinyin: 'wly' },
-  { symbol: '600900.SH', name: '长江电力', pinyin: 'cjdl' },
-  { symbol: '601899.SH', name: '紫金矿业', pinyin: 'zjky' },
-  { symbol: '300750.SZ', name: '宁德时代', pinyin: 'ndsd' },
-  { symbol: '002594.SZ', name: '比亚迪', pinyin: 'byd' },
-  { symbol: '600276.SH', name: '恒瑞医药', pinyin: 'hryy' },
-  { symbol: '000333.SZ', name: '美的集团', pinyin: 'mdjt' },
-  { symbol: '601398.SH', name: '工商银行', pinyin: 'gsyh' },
-  { symbol: '600030.SH', name: '中信证券', pinyin: 'zxzq' },
-  { symbol: '300059.SZ', name: '东方财富', pinyin: 'dfcf' },
-]
-
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
-  const q = ((req.query.q as string) || '').trim().toLowerCase()
+  const q = ((req.query.q as string) || '').trim()
   if (!q) return res.json([])
 
-  const results = STOCKS.filter(s => {
-    const code = s.symbol.toLowerCase()
-    if (code.includes(q)) return true
-    if (s.name.includes(q)) return true
-    if (s.pinyin.startsWith(q)) return true
-    return false
-  }).slice(0, 10)
+  try {
+    // Use Tencent smart search API - searches across all markets (A/HK/US)
+    const url = `https://smartbox.gtimg.cn/s3/?v=2&q=${encodeURIComponent(q)}&t=all&c=1`
+    const r = await fetch(url)
+    const text = await r.text()
 
-  return res.json(results.map(s => ({ symbol: s.symbol, name: s.name, pinyin: s.pinyin })))
+    // Response format: v_hint="code~name~market~...|code~name~market~..."
+    const match = text.match(/v_hint="(.+)"/)
+    if (!match || !match[1]) return res.json([])
+
+    const items = match[1].split('^').filter(Boolean).map(item => {
+      const parts = item.split('~')
+      if (parts.length < 3) return null
+      const code = parts[0] || ''
+      const name = parts[1] || ''
+      const market = parts[2] || '' // gp (A-share SH), sz (A-share SZ), hk (HK), us (US)
+
+      // Determine market type from the category tag (5th field)
+      const category = parts[3] || ''
+      const typeTag = parts[4] || '' // GP, GP-A, ZS (index), ETF etc.
+
+      let symbol = ''
+      if (market === 'hk') {
+        symbol = `${code}.HK`
+      } else if (market === 'us') {
+        // US codes come as "aapl.oq" or "tsla.oq" - extract ticker
+        const ticker = code.split('.')[0].toUpperCase()
+        symbol = ticker
+      } else if (market === 'sh') {
+        symbol = `${code}.SH`
+      } else if (market === 'sz') {
+        symbol = `${code}.SZ`
+      } else {
+        // Infer from code format
+        if (/^\d{6}$/.test(code)) {
+          if (code.startsWith('6')) symbol = `${code}.SH`
+          else symbol = `${code}.SZ`
+        } else {
+          symbol = code.toUpperCase()
+        }
+      }
+
+      // Skip indices (ZS) and ETFs for now, only show tradeable stocks
+      if (typeTag === 'ZS' || typeTag === 'ETF') return null
+
+      return { symbol, name, market }
+    }).filter(Boolean).slice(0, 10)
+
+    return res.json(items)
+  } catch (error: any) {
+    // Fallback to empty
+    return res.json([])
+  }
 }
