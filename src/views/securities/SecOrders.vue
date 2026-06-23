@@ -5,20 +5,9 @@ const { t } = useLanguage()
 
 const activeTab = ref<'active' | 'filled' | 'cancelled'>('active')
 
-const activeOrders = [
-  { id: 'ORD-20260622-001', symbol: '0700.HK', side: 'Buy', type: 'Limit', qty: 200, price: 345.00, filled: 0, status: 'Pending', time: '09:32:15' },
-  { id: 'ORD-20260622-002', symbol: '9988.HK', side: 'Sell', type: 'Limit', qty: 300, price: 88.00, filled: 0, status: 'Pending', time: '09:45:30' },
-  { id: 'ORD-20260622-003', symbol: 'AAPL', side: 'Buy', type: 'Stop', qty: 50, price: 190.00, filled: 0, status: 'Waiting', time: '10:01:22' },
-]
-
-const filledOrders = [
-  { id: 'ORD-20260621-010', symbol: '1810.HK', side: 'Buy', type: 'Market', qty: 1000, price: 19.80, filled: 1000, status: 'Filled', time: '14:22:10' },
-  { id: 'ORD-20260621-008', symbol: '0700.HK', side: 'Sell', type: 'Limit', qty: 100, price: 350.00, filled: 100, status: 'Filled', time: '11:05:33' },
-]
-
-const cancelledOrders = [
-  { id: 'ORD-20260620-005', symbol: '2318.HK', side: 'Buy', type: 'Limit', qty: 500, price: 40.00, filled: 0, status: 'Cancelled', time: '16:00:00' },
-]
+const activeOrders: any[] = []
+const filledOrders: any[] = []
+const cancelledOrders: any[] = []
 
 const currentOrders = () => {
   if (activeTab.value === 'active') return activeOrders
@@ -44,8 +33,16 @@ const currentOrders = () => {
       </button>
     </div>
 
+    <!-- Empty State -->
+    <div v-if="currentOrders().length === 0" class="bg-white rounded-xl shadow-sm border border-slate-100 px-5 py-12 text-center">
+      <p class="text-slate-400 text-sm mb-4">{{ t('暫無委託記錄', 'No orders yet', '暂无委托记录') }}</p>
+      <RouterLink to="/sec/trade" class="inline-block px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+        {{ t('去下單', 'Place Order', '去下单') }}
+      </RouterLink>
+    </div>
+
     <!-- Orders Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+    <div v-else class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>

@@ -5,6 +5,23 @@ const { t } = useLanguage()
 
 const isPaper = localStorage.getItem('sec-trade-mode') === 'paper'
 
+// Bank accounts from settings
+interface BankAccount {
+  bankName: string
+  accountNumber: string
+  currency: string
+  holderName: string
+}
+function loadBankAccounts(): BankAccount[] {
+  try { return JSON.parse(localStorage.getItem('sec-bank-accounts') || '[]') } catch { return [] }
+}
+const bankAccounts = ref<BankAccount[]>(loadBankAccounts())
+const selectedBankIndex = ref(bankAccounts.value.length > 0 ? 0 : -1)
+function maskAccount(num: string) {
+  if (num.length <= 4) return num
+  return '****' + num.slice(-4)
+}
+
 // Deposit flow
 const showDeposit = ref(false)
 const depositAmount = ref('')
@@ -71,10 +88,27 @@ function submitDeposit() {
       <!-- Deposit Form -->
       <div v-if="showDeposit" class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
         <h3 class="text-sm font-semibold text-slate-700 mb-3">{{ t('入金申請', 'Deposit Request', '入金申请') }}</h3>
-        <div v-if="depositSubmitted" class="text-center py-4">
+
+        <!-- No bank accounts -->
+        <div v-if="bankAccounts.length === 0" class="text-center py-4">
+          <p class="text-slate-400 text-sm mb-3">{{ t('請先在設置中添加銀行賬戶', 'Please add a bank account in Settings first', '请先在设置中添加银行账户') }}</p>
+          <RouterLink to="/sec/settings" class="inline-block px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            {{ t('前往設置', 'Go to Settings', '前往设置') }}
+          </RouterLink>
+        </div>
+
+        <div v-else-if="depositSubmitted" class="text-center py-4">
           <p class="text-green-600 text-sm font-medium">{{ t('申請已提交，請等待審核', 'Request submitted, pending review', '申请已提交，请等待审核') }}</p>
         </div>
         <div v-else class="space-y-3">
+          <div>
+            <label class="text-xs text-slate-500 block mb-1">{{ t('轉入銀行賬戶', 'From Bank Account', '转入银行账户') }}</label>
+            <select v-model="selectedBankIndex" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none">
+              <option v-for="(acct, idx) in bankAccounts" :key="idx" :value="idx">
+                {{ acct.bankName }} - {{ maskAccount(acct.accountNumber) }} ({{ acct.currency }})
+              </option>
+            </select>
+          </div>
           <div>
             <label class="text-xs text-slate-500 block mb-1">{{ t('金額 (HKD)', 'Amount (HKD)', '金额 (HKD)') }}</label>
             <input

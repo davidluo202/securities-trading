@@ -60,8 +60,13 @@ const greeting = computed(() => {
 })
 
 const userName = computed(() => {
-  // TODO: get from auth store
-  return 'David'
+  return localStorage.getItem('sec-user-name') || 'David'
+})
+
+const userHonorific = computed(() => {
+  const gender = localStorage.getItem('sec-user-gender')
+  if (gender === 'female') return t('女士', 'Ms.', '女士')
+  return t('先生', 'Mr.', '先生')
 })
 
 // Weather
@@ -132,7 +137,7 @@ const langs: { mode: LangMode; label: string }[] = [
       <!-- Clock + Greeting (yellow bg in paper mode) -->
       <div class="px-5 py-4 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
         <div class="text-xs mb-1" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
-        <div class="text-lg font-bold text-white">{{ weatherIcon }} {{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span><span v-if="weatherWarning" class="text-xs font-semibold text-red-400 ml-1">{{ weatherWarning }}</span></div>
+        <div class="text-lg font-bold text-white">{{ weatherIcon }} {{ greeting }}，{{ userName }}{{ userHonorific }}！<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span><span v-if="weatherWarning" class="text-xs font-semibold text-red-400 ml-1">{{ weatherWarning }}</span></div>
         <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
           {{ t('⚠ 模擬盤模式', '⚠ Paper Trade Mode', '⚠ 模拟盘模式') }}
         </div>
@@ -167,7 +172,7 @@ const langs: { mode: LangMode; label: string }[] = [
         >
           🚪 {{ t('退出登錄', 'Logout', '退出登录') }} / Logout
         </button>
-        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.001</div>
+        <div class="text-center text-sm text-yellow-400 font-bold mt-2 tracking-wide">v260623.002</div>
       </div>
     </aside>
 
@@ -240,7 +245,7 @@ const langs: { mode: LangMode; label: string }[] = [
           <!-- Mobile Greeting -->
           <div class="px-4 py-3 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
             <div class="text-xs" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
-            <div class="text-base font-bold text-white mt-1">{{ greeting }}，{{ userName }}{{ t('先生', '', '先生') }}！</div>
+            <div class="text-base font-bold text-white mt-1">{{ greeting }}，{{ userName }}{{ userHonorific }}！</div>
             <div v-if="paperMode" class="mt-1 px-2 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
               {{ t('⚠ 模擬盤', '⚠ Paper', '⚠ 模拟盘') }}
             </div>
@@ -271,7 +276,7 @@ const langs: { mode: LangMode; label: string }[] = [
             <button class="w-full text-left px-4 py-2 text-sm text-white font-medium hover:bg-red-600/30 rounded-lg border border-slate-600" @click="logout">
               🚪 {{ t('退出登錄', 'Logout', '退出登录') }}
             </button>
-            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.001</div>
+            <div class="text-center text-xs text-yellow-400 font-bold mt-2">v260623.002</div>
           </div>
         </aside>
       </div>
