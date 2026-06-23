@@ -80,6 +80,20 @@ const buyTotal = computed(() => filteredHistory.value.filter(h => h.type === 'tr
 const sellTotal = computed(() => filteredHistory.value.filter(h => h.type === 'trade' && h.side === 'SELL').reduce((s, h) => s + h.amount, 0))
 const depositTotal = computed(() => filteredHistory.value.filter(h => h.type === 'deposit').reduce((s, h) => s + h.amount, 0))
 
+// Summary by currency
+const currencySummary = computed(() => {
+  const map: Record<string, { buy: number; sell: number; deposit: number; withdrawal: number }> = {}
+  for (const h of filteredHistory.value) {
+    const c = h.currency || 'HKD'
+    if (!map[c]) map[c] = { buy: 0, sell: 0, deposit: 0, withdrawal: 0 }
+    if (h.type === 'trade' && h.side === 'BUY') map[c].buy += h.amount
+    else if (h.type === 'trade' && h.side === 'SELL') map[c].sell += h.amount
+    else if (h.type === 'deposit') map[c].deposit += h.amount
+    else if (h.type === 'withdrawal') map[c].withdrawal += h.amount
+  }
+  return Object.entries(map).map(([currency, totals]) => ({ currency, ...totals }))
+})
+
 function fmt(n: number) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 const typeLabel = (type: string) => {
@@ -140,6 +154,22 @@ const statusColor = (status: string) => {
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <p class="text-sm text-slate-500 mb-2">{{ t('入金總額', 'Deposits', '入金总额') }}</p>
         <p class="text-2xl font-bold text-blue-600">{{ fmt(depositTotal) }}</p>
+      </div>
+    </div>
+
+    <!-- Currency Summary -->
+    <div v-if="currencySummary.length > 0" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-bold text-slate-800 mb-4">{{ t('分幣種匯總', 'Summary by Currency', '分币种汇总') }}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div v-for="cs in currencySummary" :key="cs.currency" class="border border-slate-200 rounded-xl p-4">
+          <p class="text-base font-bold text-slate-800 mb-3">{{ cs.currency }}</p>
+          <div class="space-y-1.5 text-sm">
+            <div v-if="cs.buy > 0" class="flex justify-between"><span class="text-slate-500">{{ t('買入', 'Buy', '买入') }}</span><span class="font-semibold text-green-700">{{ fmt(cs.buy) }}</span></div>
+            <div v-if="cs.sell > 0" class="flex justify-between"><span class="text-slate-500">{{ t('賣出', 'Sell', '卖出') }}</span><span class="font-semibold text-red-600">{{ fmt(cs.sell) }}</span></div>
+            <div v-if="cs.deposit > 0" class="flex justify-between"><span class="text-slate-500">{{ t('入金', 'Deposit', '入金') }}</span><span class="font-semibold text-blue-600">+{{ fmt(cs.deposit) }}</span></div>
+            <div v-if="cs.withdrawal > 0" class="flex justify-between"><span class="text-slate-500">{{ t('出金', 'Withdraw', '出金') }}</span><span class="font-semibold text-orange-600">-{{ fmt(cs.withdrawal) }}</span></div>
+          </div>
+        </div>
       </div>
     </div>
 
