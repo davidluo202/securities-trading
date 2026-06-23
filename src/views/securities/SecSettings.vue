@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useLanguage, type LangMode } from '../../composables/useLanguage'
 const { t, langMode, setLang } = useLanguage()
 
@@ -21,6 +21,121 @@ function saveProfile() {
   else localStorage.removeItem('sec-user-dob')
   profileSaved.value = true
   setTimeout(() => { profileSaved.value = false }, 2000)
+}
+
+// --- Phone Verification ---
+const countryCodes = [
+  { code: '+1', label: 'US (+1)', digits: 10 },
+  { code: '+852', label: 'HK (+852)', digits: 8 },
+  { code: '+86', label: 'CN (+86)', digits: 11 },
+  { code: '+853', label: 'MO (+853)', digits: 8 },
+  { code: '+65', label: 'SG (+65)', digits: 8 },
+  { code: '+61', label: 'AU (+61)', digits: 9 },
+  { code: '+81', label: 'JP (+81)', digitsMin: 10, digits: 11 },
+  { code: '+82', label: 'KR (+82)', digitsMin: 10, digits: 11 },
+  { code: '+44', label: 'UK (+44)', digits: 10 },
+] as const
+
+type CountryEntry = typeof countryCodes[number]
+
+const phoneCountry = ref(localStorage.getItem('sec-phone-country') || '+852')
+const phoneNumber = ref(localStorage.getItem('sec-phone') || '')
+const phoneVerified = ref(localStorage.getItem('sec-phone-verified') === 'true')
+const phoneSending = ref(false)
+const phoneOtpSent = ref(false)
+const phoneOtpToken = ref('')
+const phoneOtpCode = ref('')
+const phoneVerifying = ref(false)
+const phoneError = ref('')
+
+const selectedCountry = computed<CountryEntry>(() =>
+  countryCodes.find(c => c.code === phoneCountry.value) || countryCodes[1]
+)
+
+const phoneDigitsHint = computed(() => {
+  const c = selectedCountry.value
+  const min = (c as any).digitsMin
+  return min ? `${min}-${c.digits}` : String(c.digits)
+})
+
+function validatePhone(): boolean {
+  const digits = phoneNumber.value.replace(/\s/g, '')
+  if (!/^\d+$/.test(digits)) return false
+  const c = selectedCountry.value
+  const min = (c as any).digitsMin || c.digits
+  return digits.length >= min && digits.length <= c.digits
+}
+
+async function sendPhoneOtp() {
+  phoneError.value = ''
+  if (!validatePhone()) {
+    phoneError.value = t(
+      `請輸入${phoneDigitsHint.value}位數字`,
+      `Please enter ${phoneDigitsHint.value} digits`,
+      `请输入${phoneDigitsHint.value}位数字`
+    )
+    return
+  }
+  phoneSending.value = true
+  try {
+    const fullPhone = phoneCountry.value + phoneNumber.value.replace(/\s/g, '')
+    const resp = await fetch('/api/sms/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: fullPhone }),
+    })
+    const data = await resp.json()
+    if (!resp.ok || !data.success) {
+      phoneError.value = data.error || t('發送失敗', 'Failed to send', '发送失败')
+      return
+    }
+    phoneOtpToken.value = data.token
+    phoneOtpSent.value = true
+  } catch {
+    phoneError.value = t('網絡錯誤', 'Network error', '网络错误')
+  } finally {
+    phoneSending.value = false
+  }
+}
+
+async function verifyPhoneOtp() {
+  phoneError.value = ''
+  if (phoneOtpCode.value.length !== 6) {
+    phoneError.value = t('請輸入6位驗證碼', 'Please enter 6-digit code', '请输入6位验证码')
+    return
+  }
+  phoneVerifying.value = true
+  try {
+    const resp = await fetch('/api/sms/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: phoneOtpToken.value, code: phoneOtpCode.value }),
+    })
+    const data = await resp.json()
+    if (!resp.ok || !data.success) {
+      phoneError.value = data.error || t('驗證失敗', 'Verification failed', '验证失败')
+      return
+    }
+    phoneVerified.value = true
+    localStorage.setItem('sec-phone-verified', 'true')
+    localStorage.setItem('sec-phone', phoneNumber.value.replace(/\s/g, ''))
+    localStorage.setItem('sec-phone-country', phoneCountry.value)
+    phoneOtpSent.value = false
+    phoneOtpCode.value = ''
+  } catch {
+    phoneError.value = t('網絡錯誤', 'Network error', '网络错误')
+  } finally {
+    phoneVerifying.value = false
+  }
+}
+
+function resetPhoneVerification() {
+  phoneVerified.value = false
+  phoneOtpSent.value = false
+  phoneOtpCode.value = ''
+  phoneOtpToken.value = ''
+  phoneError.value = ''
+  localStorage.removeItem('sec-phone-verified')
 }
 
 // --- Bank Accounts ---
@@ -108,6 +223,88 @@ function maskAccount(num: string) {
           </button>
           <span v-if="profileSaved" class="text-green-600 text-sm font-bold">{{ t('已保存', 'Saved', '已保存') }}</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Phone Verification -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('手機號碼', 'Phone Number', '手机号码') }}</h3>
+      <div class="space-y-4">
+        <div class="flex gap-3">
+          <div class="w-36">
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('區號', 'Code', '区号') }}</label>
+            <select v-model="phoneCountry" :disabled="phoneVerified" class="w-full border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400">
+              <option v-for="c in countryCodes" :key="c.code" :value="c.code">{{ c.label }}</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <label class="text-sm font-semibold text-slate-700 block mb-2">
+              {{ t('手機號碼', 'Phone Number', '手机号码') }}
+              <span class="text-slate-400 font-normal">({{ phoneDigitsHint }}{{ t('位', ' digits', '位') }})</span>
+            </label>
+            <div class="flex gap-3">
+              <input
+                v-model="phoneNumber"
+                type="tel"
+                inputmode="numeric"
+                :disabled="phoneVerified"
+                :placeholder="phoneDigitsHint + t('位數字', ' digits', '位数字')"
+                class="flex-1 border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+              />
+              <span v-if="phoneVerified" class="flex items-center gap-1.5 text-green-600 font-bold text-sm whitespace-nowrap px-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                {{ t('已驗證', 'Verified', '已验证') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Send OTP / Change -->
+        <div v-if="!phoneVerified && !phoneOtpSent" class="flex items-center gap-4 pt-1">
+          <button
+            class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all disabled:opacity-50"
+            :disabled="phoneSending"
+            @click="sendPhoneOtp"
+          >
+            {{ phoneSending ? t('發送中...', 'Sending...', '发送中...') : t('發送驗證碼', 'Send OTP', '发送验证码') }}
+          </button>
+        </div>
+
+        <!-- OTP Input -->
+        <div v-if="phoneOtpSent && !phoneVerified" class="space-y-3">
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('驗證碼', 'Verification Code', '验证码') }}</label>
+            <input
+              v-model="phoneOtpCode"
+              type="text"
+              inputmode="numeric"
+              maxlength="6"
+              :placeholder="t('輸入6位驗證碼', 'Enter 6-digit code', '输入6位验证码')"
+              class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono tracking-widest text-center text-lg"
+            />
+          </div>
+          <div class="flex gap-3">
+            <button
+              class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all disabled:opacity-50"
+              :disabled="phoneVerifying"
+              @click="verifyPhoneOtp"
+            >
+              {{ phoneVerifying ? t('驗證中...', 'Verifying...', '验证中...') : t('驗證', 'Verify', '验证') }}
+            </button>
+            <button class="px-6 py-3 border-2 border-slate-300 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="phoneOtpSent = false; phoneOtpCode = ''; phoneError = ''">
+              {{ t('取消', 'Cancel', '取消') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Change phone -->
+        <div v-if="phoneVerified" class="pt-1">
+          <button class="text-sm text-blue-600 hover:text-blue-700 font-bold hover:underline" @click="resetPhoneVerification">
+            {{ t('更換號碼', 'Change Number', '更换号码') }}
+          </button>
+        </div>
+
+        <p v-if="phoneError" class="text-red-600 text-sm font-semibold">{{ phoneError }}</p>
       </div>
     </div>
 
