@@ -268,7 +268,7 @@ const langs: { mode: LangMode; label: string }[] = [
           <!-- Mobile Greeting -->
           <div class="px-4 py-3 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
             <div class="text-xs" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
-            <div class="text-base font-bold text-white mt-1">{{ greeting }}，{{ userName }}{{ userHonorific }}！</div>
+            <div class="text-base font-bold text-white mt-1">{{ weatherIcon }} {{ greeting }}，{{ userName }}{{ userHonorific }}！<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span></div>
             <div v-if="paperMode" class="mt-1 px-2 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
               {{ t('⚠ 模擬盤', '⚠ Paper', '⚠ 模拟盘') }}
             </div>
