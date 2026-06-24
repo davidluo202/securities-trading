@@ -1,5 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+// Common HK stock name mappings for English name search
+const HK_NAME_MAP: Record<string, string> = {
+  'hsbc': '00005.HK', 'tencent': '00700.HK', 'alibaba': '09988.HK', 'meituan': '03690.HK',
+  'jd': '09618.HK', 'xiaomi': '01810.HK', 'byd': '01211.HK', 'aia': '01299.HK',
+  'ping an': '02318.HK', 'icbc': '01398.HK', 'ccb': '00939.HK', 'boc': '03988.HK',
+  'china mobile': '00941.HK', 'petrochina': '00857.HK', 'sinopec': '00386.HK',
+  'cnooc': '00883.HK', 'lenovo': '00992.HK', 'geely': '00175.HK', 'li auto': '02015.HK',
+  'nio': '09866.HK', 'netease': '09999.HK', 'baidu': '09888.HK', 'kuaishou': '01024.HK',
+  'citic': '00267.HK', 'ck hutchison': '00001.HK', 'sun hung kai': '00016.HK',
+  'henderson': '00012.HK', 'new world': '00017.HK', 'wharf': '00004.HK',
+  'galaxy entertainment': '00027.HK', 'sands china': '01928.HK',
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS')
@@ -24,17 +37,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (parts.length < 3) return null
       const code = parts[0] || ''
       const name = parts[1] || ''
-      const market = parts[2] || '' // gp (A-share SH), sz (A-share SZ), hk (HK), us (US)
-
-      // Determine market type from the category tag (5th field)
-      const category = parts[3] || ''
-      const typeTag = parts[4] || '' // GP, GP-A, ZS (index), ETF etc.
+      const market = parts[2] || ''
+      const typeTag = parts[4] || ''
 
       let symbol = ''
       if (market === 'hk') {
         symbol = `${code}.HK`
       } else if (market === 'us') {
-        // US codes come as "aapl.oq" or "tsla.oq" - extract ticker
         const ticker = code.split('.')[0].toUpperCase()
         symbol = ticker
       } else if (market === 'sh') {
@@ -42,7 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else if (market === 'sz') {
         symbol = `${code}.SZ`
       } else {
-        // Infer from code format
         if (/^\d{6}$/.test(code)) {
           if (code.startsWith('6')) symbol = `${code}.SH`
           else symbol = `${code}.SZ`
@@ -51,15 +59,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      // Skip indices (ZS) and ETFs for now, only show tradeable stocks
       if (typeTag === 'ZS' || typeTag === 'ETF') return null
-
       return { symbol, name, market }
-    }).filter(Boolean).slice(0, 10)
+    }).filter(Boolean) as { symbol: string; name: string; market: string }[]
 
-    return res.json(items)
+    // Pure numeric query: prioritize HK stocks (pad with leading zeros for HK format)
+    const isNumeric = /^\d+$/.test(q)
+    if (isNumeric) {
+      // Sort HK stocks first, then A-shares, then US
+      items.sort((a, b) => {
+        const aHK = a.symbol.endsWith('.HK') ? 0 : 1
+        const bHK = b.symbol.endsWith('.HK') ? 0 : 1
+        return aHK - bHK
+      })
+    }
+
+    // English name search: check local HK name map first
+    const qLower = q.toLowerCase()
+    const localMatch = HK_NAME_MAP[qLower]
+    if (localMatch && !items.some(i => i.symbol === localMatch)) {
+      // Prepend the local match
+      const code = localMatch.replace('.HK', '')
+      items.unshift({ symbol: localMatch, name: `${qLower.toUpperCase()} (${code}.HK)`, market: 'hk' })
+    }
+
+    return res.json(items.slice(0, 10))
   } catch (error: any) {
-    // Fallback to empty
     return res.json([])
   }
 }

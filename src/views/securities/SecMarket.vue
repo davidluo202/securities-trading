@@ -257,7 +257,7 @@ onUnmounted(() => {
             <h3 class="text-base font-bold text-white">{{ t('A股 Top 5', 'A-Share Top 5', 'A股 Top 5') }}</h3>
           </div>
           <div class="divide-y divide-slate-100">
-            <div v-for="(s, idx) in aShareTop" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
+            <div v-for="(s, idx) in aShareTop" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors overflow-hidden" @click="goStock(s.symbol)">
               <span class="w-7 text-sm font-bold text-slate-400">{{ idx + 1 }}</span>
               <div class="flex-1 min-w-0">
                 <p class="text-base font-semibold text-slate-800 truncate">{{ s.name }}</p>
@@ -281,7 +281,7 @@ onUnmounted(() => {
             <h3 class="text-base font-bold text-white">{{ t('港股 Top 5', 'HK Top 5', '港股 Top 5') }}</h3>
           </div>
           <div class="divide-y divide-slate-100">
-            <div v-for="(s, idx) in hkTop" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
+            <div v-for="(s, idx) in hkTop" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors overflow-hidden" @click="goStock(s.symbol)">
               <span class="w-7 text-sm font-bold text-slate-400">{{ idx + 1 }}</span>
               <div class="flex-1 min-w-0">
                 <p class="text-base font-semibold text-slate-800 truncate">{{ s.name }}</p>
@@ -305,7 +305,7 @@ onUnmounted(() => {
             <h3 class="text-base font-bold text-white">{{ t('美股 Top 5', 'US Top 5', '美股 Top 5') }}</h3>
           </div>
           <div class="divide-y divide-slate-100">
-            <div v-for="(s, idx) in usTop" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors" @click="goStock(s.symbol)">
+            <div v-for="(s, idx) in usTop" :key="s.symbol" class="flex items-center px-6 py-3.5 hover:bg-slate-50 cursor-pointer transition-colors overflow-hidden" @click="goStock(s.symbol)">
               <span class="w-7 text-sm font-bold text-slate-400">{{ idx + 1 }}</span>
               <div class="flex-1 min-w-0">
                 <p class="text-base font-semibold text-slate-800 truncate">{{ s.name }}</p>
