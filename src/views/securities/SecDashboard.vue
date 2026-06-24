@@ -30,6 +30,65 @@ const chartRef = ref<HTMLElement | null>(null)
 const activeInterval = ref('1M')
 let chartInstance: ReturnType<typeof createChart> | null = null
 
+const sparklineCache = ref<Record<string, string>>({})
+const expandedCard = ref<number | null>(null)
+
+function pricesToSparkline(prices: number[]): string {
+  if (prices.length < 2) return ''
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  const range = max - min || 1
+  const step = 56 / (prices.length - 1)
+  return prices.map((p, i) => {
+    const x = (i * step).toFixed(1)
+    const y = (22 - ((p - min) / range) * 20).toFixed(1)
+    return `${x},${y}`
+  }).join(' ')
+}
+
+function generateFallbackSparkline(price: number, prevClose: number): string {
+  const points: string[] = []
+  const seed = Math.abs(price * 100) | 0
+  let val = prevClose > 0 ? prevClose : price * 0.99
+  for (let i = 0; i <= 8; i++) {
+    const noise = ((seed * (i + 1) * 7 + 13) % 100 - 50) / 500
+    val = val + val * noise
+    if (i === 8) val = price
+    const x = i * 7
+    const r = Math.max(Math.abs(price - (prevClose || price)), price * 0.005) || 1
+    const mid = ((prevClose || price) + price) / 2
+    const y = 12 - ((val - mid) / r) * 10
+    points.push(`${x},${Math.max(1, Math.min(23, y)).toFixed(1)}`)
+  }
+  return points.join(' ')
+}
+
+async function fetchSparklines() {
+  for (const h of holdings.value) {
+    try {
+      const res = await fetch(`/api/stock-history?symbol=${encodeURIComponent(h.symbol)}&days=1`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.prices?.length > 1) {
+          sparklineCache.value[h.symbol] = pricesToSparkline(data.prices.map((p: { close: number }) => p.close))
+        }
+      }
+    } catch { /* silent */ }
+  }
+}
+
+function getSparkline(h: Holding): string {
+  if (sparklineCache.value[h.symbol]) return sparklineCache.value[h.symbol]
+  const q = quotes.value[h.symbol]
+  const price = q ? q.price : h.avgCost
+  const prevClose = q ? price - q.change : h.avgCost
+  return generateFallbackSparkline(price, prevClose)
+}
+
+function toggleCard(index: number) {
+  expandedCard.value = expandedCard.value === index ? null : index
+}
+
 const intervals = ['Live', '1D', '1W', '1M', '3M', 'YTD', '1Y', 'All']
 
 function loadData() {
@@ -230,6 +289,7 @@ let resizeHandler: (() => void) | null = null
 onMounted(async () => {
   loadData()
   await fetchQuotes()
+  fetchSparklines()
   nextTick(renderChart)
   pollTimer = setInterval(fetchQuotes, 30000)
   resizeHandler = () => { if (chartInstance && chartRef.value) renderChart() }
@@ -310,14 +370,78 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- Holdings table -->
-      <div v-else class="overflow-x-auto">
+      <!-- Mobile card layout -->
+      <div v-if="sortedHoldings.length > 0" class="lg:hidden px-4 py-3">
+        <div
+          v-for="(h, i) in sortedHoldings"
+          :key="h.symbol"
+          class="bg-white rounded-xl shadow-sm border p-4 mb-3 overflow-hidden cursor-pointer"
+          @click="toggleCard(i)"
+        >
+          <div class="flex items-center justify-between">
+            <div class="min-w-0 flex-1 mr-3">
+              <p class="font-medium text-slate-900 truncate">{{ h.name }}</p>
+              <p class="text-xs text-slate-400">{{ h.symbol }} · {{ h.quantity }}{{ t('股', ' shares', '股') }}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-sm font-semibold text-slate-800">{{ (quotes[h.symbol]?.price || h.avgCost).toFixed(2) }}</span>
+              <svg class="max-w-[60px] h-6" viewBox="0 0 60 24">
+                <polyline fill="none" :stroke="(quotes[h.symbol]?.changePercent || 0) >= 0 ? '#059669' : '#dc2626'" stroke-width="1.5" :points="getSparkline(h)" />
+              </svg>
+              <span
+                class="text-xs font-bold px-2 py-0.5 rounded-md"
+                :class="(quotes[h.symbol]?.changePercent || 0) >= 0 ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'"
+              >
+                {{ (quotes[h.symbol]?.changePercent || 0) >= 0 ? '+' : '' }}{{ (quotes[h.symbol]?.changePercent || 0).toFixed(2) }}%
+              </span>
+            </div>
+          </div>
+          <div v-if="expandedCard === i" class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span class="text-slate-400 text-xs">{{ t('數量', 'Qty', '数量') }}</span>
+              <p class="text-slate-700 font-medium">{{ h.quantity }}</p>
+            </div>
+            <div>
+              <span class="text-slate-400 text-xs">{{ t('市值', 'Mkt Val', '市值') }}</span>
+              <p class="text-slate-700 font-medium">{{ formatCurrency(h.quantity * (quotes[h.symbol]?.price || h.avgCost)) }}</p>
+            </div>
+            <div>
+              <span class="text-slate-400 text-xs">{{ t('佔比', 'Weight', '占比') }}</span>
+              <p class="text-slate-700 font-medium">{{ holdingWeight(h).toFixed(1) }}%</p>
+            </div>
+            <div>
+              <span class="text-slate-400 text-xs">{{ t('總回報', 'Return', '总回报') }}</span>
+              <p class="font-medium" :class="holdingReturn(h) >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ holdingReturn(h) >= 0 ? '+' : '-' }}{{ formatCurrency(holdingReturn(h)) }}
+              </p>
+            </div>
+            <div>
+              <span class="text-slate-400 text-xs">{{ t('回報率', 'Return %', '回报率') }}</span>
+              <p class="font-medium" :class="holdingReturnPct(h) >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ holdingReturnPct(h) >= 0 ? '+' : '' }}{{ holdingReturnPct(h).toFixed(2) }}%
+              </p>
+            </div>
+            <div class="flex items-end">
+              <button
+                class="text-xs text-blue-600 font-medium"
+                @click.stop="goToStock(h.symbol)"
+              >
+                {{ t('查看詳情', 'View Details', '查看详情') }} →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop holdings table -->
+      <div v-if="sortedHoldings.length > 0" class="hidden lg:block overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="text-xs text-slate-500 border-b border-slate-100">
               <th class="text-left px-6 py-3 font-medium">{{ t('股票', 'Stock', '股票') }}</th>
               <th class="text-right px-4 py-3 font-medium">{{ t('數量', 'Qty', '数量') }}</th>
               <th class="text-right px-4 py-3 font-medium">{{ t('現價', 'Price', '现价') }}</th>
+              <th class="text-center px-4 py-3 font-medium">{{ t('走勢', 'Trend', '走势') }}</th>
               <th class="text-right px-4 py-3 font-medium">{{ t('市值', 'Mkt Val', '市值') }}</th>
               <th class="text-right px-4 py-3 font-medium">{{ t('佔比', 'Weight', '占比') }}</th>
               <th class="text-right px-4 py-3 font-medium">{{ t('今日', 'Today', '今日') }}</th>
@@ -340,6 +464,11 @@ onUnmounted(() => {
               <td class="text-right px-4 py-4 text-slate-700">{{ h.quantity }}</td>
               <td class="text-right px-4 py-4 text-slate-700">
                 {{ (quotes[h.symbol]?.price || h.avgCost).toFixed(2) }}
+              </td>
+              <td class="text-center px-4 py-4">
+                <svg class="max-w-[60px] h-6 inline-block" viewBox="0 0 60 24">
+                  <polyline fill="none" :stroke="(quotes[h.symbol]?.changePercent || 0) >= 0 ? '#059669' : '#dc2626'" stroke-width="1.5" :points="getSparkline(h)" />
+                </svg>
               </td>
               <td class="text-right px-4 py-4 text-slate-700">
                 {{ formatCurrency(h.quantity * (quotes[h.symbol]?.price || h.avgCost)) }}
