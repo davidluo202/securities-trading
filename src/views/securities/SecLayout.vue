@@ -76,7 +76,12 @@ const greeting = computed(() => {
 })
 
 const userName = computed(() => {
-  return localStorage.getItem('sec-user-name') || 'David'
+  // 问候语只用姓
+  const surname = localStorage.getItem('sec-user-surname') || ''
+  if (surname) return surname
+  // 兼容旧数据：取全名第一个字
+  const fullName = localStorage.getItem('sec-user-name') || ''
+  return fullName.charAt(0) || 'David'
 })
 
 const userHonorific = computed(() => {

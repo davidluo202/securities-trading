@@ -9,13 +9,20 @@ const defaultOrderType = ref('limit')
 const defaultMarket = ref('HK')
 
 // --- Personal Info ---
+const userSurname = ref(localStorage.getItem('sec-user-surname') || '')
+const userFirstname = ref(localStorage.getItem('sec-user-firstname') || '')
 const userName = ref(localStorage.getItem('sec-user-name') || '')
 const userGender = ref(localStorage.getItem('sec-user-gender') || 'male')
 const userDob = ref(localStorage.getItem('sec-user-dob') || '')
 const profileSaved = ref(false)
 
 function saveProfile() {
-  localStorage.setItem('sec-user-name', userName.value)
+  localStorage.setItem('sec-user-surname', userSurname.value)
+  localStorage.setItem('sec-user-firstname', userFirstname.value)
+  // Keep full name for backward compatibility
+  const fullName = userSurname.value + userFirstname.value
+  localStorage.setItem('sec-user-name', fullName)
+  userName.value = fullName
   localStorage.setItem('sec-user-gender', userGender.value)
   if (userDob.value) localStorage.setItem('sec-user-dob', userDob.value)
   else localStorage.removeItem('sec-user-dob')
@@ -202,9 +209,15 @@ function maskAccount(num: string) {
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
       <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('個人信息', 'Personal Info', '个人信息') }}</h3>
       <div class="space-y-4">
-        <div>
-          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('客戶姓名', 'Name', '客户姓名') }}</label>
-          <input v-model="userName" type="text" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name', '姓') }}</label>
+            <input v-model="userSurname" type="text" :placeholder="t('如：郑', 'e.g. Zheng', '如：郑')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name', '名') }}</label>
+            <input v-model="userFirstname" type="text" :placeholder="t('如：立坤', 'e.g. Likun', '如：立坤')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          </div>
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('性別', 'Gender', '性别') }}</label>
