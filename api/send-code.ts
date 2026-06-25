@@ -11,6 +11,40 @@ function signCode(email: string, code: string, expires: number): string {
   return Buffer.from(JSON.stringify({ email, code, expires, sig })).toString('base64');
 }
 
+async function sendSms(phone: string, code: string): Promise<boolean> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+
+  if (!accountSid || !authToken || !messagingServiceSid) {
+    console.error('Twilio credentials not configured');
+    return false;
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const params = new URLSearchParams();
+  params.append('To', phone);
+  params.append('MessagingServiceSid', messagingServiceSid);
+  params.append('Body', `【诚港金融】您的验证码为${code}，5分钟内有效。如非本人操作请忽略。`);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    console.error('Twilio API error:', response.status, errorData);
+    return false;
+  }
+
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -21,23 +55,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.body;
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
-    return res.status(400).json({ error: 'Please provide a valid email address' });
+  const { email, method = 'email', phone } = req.body;
+
+  if (method === 'sms') {
+    if (!phone || typeof phone !== 'string') {
+      return res.status(400).json({ error: 'Please provide a valid phone number' });
+    }
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
+    }
+  } else {
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
+    }
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const expires = Date.now() + 10 * 60 * 1000; // 10 min
   const token = signCode(email, code, expires);
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@cmf-otc.com';
-  if (!apiKey) {
-    console.error('RESEND_API_KEY not configured');
-    return res.status(500).json({ error: 'Email service not configured' });
-  }
-
   try {
+    if (method === 'sms') {
+      const sent = await sendSms(phone, code);
+      if (!sent) {
+        return res.status(500).json({ error: 'Failed to send SMS verification code' });
+      }
+      return res.status(200).json({ success: true, token });
+    }
+
+    // Default: send via email
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.error('RESEND_API_KEY not configured');
+      return res.status(500).json({ error: 'Email service not configured' });
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -77,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ success: true, token });
   } catch (error) {
-    console.error('Failed to send email:', error);
+    console.error('Failed to send verification code:', error);
     return res.status(500).json({ error: 'Failed to send verification code' });
   }
 }
