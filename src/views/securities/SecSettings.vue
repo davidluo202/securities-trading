@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useLanguage, type LangMode } from '../../composables/useLanguage'
 const { t, langMode, setLang } = useLanguage()
 
@@ -8,26 +8,68 @@ const confirmBeforeOrder = ref(true)
 const defaultOrderType = ref('limit')
 const defaultMarket = ref('HK')
 
-// --- Personal Info ---
-const userSurname = ref(localStorage.getItem('sec-user-surname') || '')
-const userFirstname = ref(localStorage.getItem('sec-user-firstname') || '')
-const userName = ref(localStorage.getItem('sec-user-name') || '')
-const userGender = ref(localStorage.getItem('sec-user-gender') || 'male')
-const userDob = ref(localStorage.getItem('sec-user-dob') || '')
+// --- Personal Info (loaded from DB) ---
+const userSurname = ref('')
+const userFirstname = ref('')
+const userName = ref('')
+const userGender = ref('male')
+const userDob = ref('')
 const profileSaved = ref(false)
+const profileSaving = ref(false)
+const userEmail = ref(localStorage.getItem('sec-user-email') || '')
 
-function saveProfile() {
-  localStorage.setItem('sec-user-surname', userSurname.value)
-  localStorage.setItem('sec-user-firstname', userFirstname.value)
-  // Keep full name for backward compatibility
-  const fullName = userSurname.value + userFirstname.value
-  localStorage.setItem('sec-user-name', fullName)
-  userName.value = fullName
-  localStorage.setItem('sec-user-gender', userGender.value)
-  if (userDob.value) localStorage.setItem('sec-user-dob', userDob.value)
-  else localStorage.removeItem('sec-user-dob')
-  profileSaved.value = true
-  setTimeout(() => { profileSaved.value = false }, 2000)
+onMounted(async () => {
+  if (!userEmail.value) return
+  try {
+    const res = await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`)
+    const data = await res.json()
+    if (data.success) {
+      if (data.surname) userSurname.value = data.surname
+      if (data.firstname) userFirstname.value = data.firstname
+      if (data.gender) userGender.value = data.gender
+      if (data.dob) userDob.value = data.dob.split('T')[0]
+      userName.value = (data.surname || '') + (data.firstname || '')
+      if (data.phone) {
+        const cc = data.phoneCountry || '+852'
+        phoneCountry.value = cc
+        phoneNumber.value = data.phone.startsWith(cc) ? data.phone.slice(cc.length) : data.phone
+      }
+      if (data.phoneVerified) phoneVerified.value = true
+      // Sync to localStorage for Layout greeting
+      localStorage.setItem('sec-user-surname', userSurname.value)
+      localStorage.setItem('sec-user-name', userName.value)
+      localStorage.setItem('sec-user-gender', userGender.value)
+    }
+  } catch { /* silent */ }
+})
+
+async function saveProfile() {
+  if (!userEmail.value) return
+  profileSaving.value = true
+  try {
+    const fullName = userSurname.value + userFirstname.value
+    userName.value = fullName
+    await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        surname: userSurname.value,
+        firstname: userFirstname.value,
+        gender: userGender.value,
+        dob: userDob.value || null,
+        phone: phoneVerified.value ? (phoneCountry.value + phoneNumber.value.replace(/\s/g, '')) : '',
+        phoneCountry: phoneCountry.value,
+        phoneVerified: phoneVerified.value,
+      }),
+    })
+    // Sync to localStorage for Layout greeting
+    localStorage.setItem('sec-user-surname', userSurname.value)
+    localStorage.setItem('sec-user-name', fullName)
+    localStorage.setItem('sec-user-gender', userGender.value)
+    profileSaved.value = true
+    setTimeout(() => { profileSaved.value = false }, 2000)
+  } catch { /* silent */ }
+  finally { profileSaving.value = false }
 }
 
 // --- Phone Verification ---
@@ -231,8 +273,11 @@ function maskAccount(num: string) {
           <input v-model="userDob" type="date" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
         <div class="flex items-center gap-4 pt-1">
-          <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all" @click="saveProfile">
-            {{ t('保存', 'Save', '保存') }}
+          <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="profileSaving" @click="saveProfile">
+            {{ profileSaving ? t('保存中...', 'Saving...', '保存中...') : t('保存', 'Save', '保存') }}
+          </button>
+          <button class="px-6 py-3 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="profileSaving" @click="async () => { await saveProfile(); window.history.back() }">
+            {{ t('保存並退出', 'Save & Exit', '保存并退出') }}
           </button>
           <span v-if="profileSaved" class="text-green-600 text-sm font-bold">{{ t('已保存', 'Saved', '已保存') }}</span>
         </div>
