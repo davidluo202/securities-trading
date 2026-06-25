@@ -244,7 +244,7 @@ function maskAccount(num: string) {
       <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('手機號碼', 'Phone Number', '手机号码') }}</h3>
       <div class="space-y-4">
         <div class="flex gap-3">
-          <div class="w-36">
+          <div :class="phoneVerified ? 'w-44' : 'w-36'">
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('區號', 'Code', '区号') }}</label>
             <select v-model="phoneCountry" :disabled="phoneVerified" class="w-full border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400">
               <option v-for="c in countryCodes" :key="c.code" :value="c.code">{{ c.label }}</option>
@@ -292,6 +292,7 @@ function maskAccount(num: string) {
               type="text"
               inputmode="numeric"
               maxlength="6"
+              autocomplete="one-time-code"
               :placeholder="t('輸入6位驗證碼', 'Enter 6-digit code', '输入6位验证码')"
               class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono tracking-widest text-center text-lg"
             />
