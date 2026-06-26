@@ -35,9 +35,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const items = match[1].split('^').filter(Boolean).map(item => {
       const parts = item.split('~')
       if (parts.length < 3) return null
-      const code = parts[0] || ''
-      const name = parts[1] || ''
-      const market = parts[2] || ''
+      // Tencent format: market~code~name~pinyin~typeTag
+      const market = parts[0] || ''
+      const code = parts[1] || ''
+      const name = parts[2] || ''
       const typeTag = parts[4] || ''
 
       let symbol = ''
