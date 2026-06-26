@@ -216,8 +216,8 @@ const langs: { mode: LangMode; label: string }[] = [
           <span v-if="paperMode" class="lg:hidden text-xs font-bold text-yellow-900 bg-yellow-500/40 px-2 py-0.5 rounded">{{ t('模擬盤', 'Paper', '模拟盘') }}</span>
         </div>
         <!-- System Title -->
-        <div class="hidden lg:block text-center flex-1">
-          <span class="text-lg font-bold text-slate-800">{{ t('誠港金融證券交易系統', 'CMFinancial Securities Trading System', '诚港金融证券交易系统') }}</span>
+        <div class="hidden lg:block flex-1">
+          <span class="text-2xl font-bold text-slate-800">{{ t('誠港金融證券交易系統', 'CMFinancial Securities Trading System', '诚港金融证券交易系统') }}</span>
         </div>
         <div class="flex items-center gap-3">
           <!-- Font Size Toggle -->
