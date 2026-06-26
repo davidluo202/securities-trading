@@ -26,9 +26,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Use Tencent smart search API - searches across all markets (A/HK/US)
     const url = `https://smartbox.gtimg.cn/s3/?v=2&q=${encodeURIComponent(q)}&t=all&c=1`
     const r = await fetch(url)
-    const text = await r.text()
+    let text = await r.text()
+    // Decode unicode escapes (e.g. \u6c47 → 汇)
+    text = text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
 
-    // Response format: v_hint="code~name~market~...|code~name~market~..."
+    // Response format: v_hint="market~code~name~pinyin~typeTag|..."
     const match = text.match(/v_hint="(.+)"/)
     if (!match || !match[1]) return res.json([])
 
