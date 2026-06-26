@@ -215,6 +215,10 @@ const langs: { mode: LangMode; label: string }[] = [
           <img :src="sidebarLogo" alt="CM Financial" class="lg:hidden h-8 object-contain" />
           <span v-if="paperMode" class="lg:hidden text-xs font-bold text-yellow-900 bg-yellow-500/40 px-2 py-0.5 rounded">{{ t('模擬盤', 'Paper', '模拟盘') }}</span>
         </div>
+        <!-- System Title -->
+        <div class="hidden lg:block text-center flex-1">
+          <span class="text-lg font-bold text-slate-800">{{ t('誠港金融證券交易系統', 'CMFinancial Securities Trading System', '诚港金融证券交易系统') }}</span>
+        </div>
         <div class="flex items-center gap-3">
           <!-- Font Size Toggle -->
           <button
@@ -313,6 +317,11 @@ const langs: { mode: LangMode; label: string }[] = [
       <main class="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
         <RouterView />
       </main>
+
+      <!-- Footer (Desktop) -->
+      <footer class="hidden lg:block py-3 px-4 text-center text-xs text-gray-400 border-t border-gray-200 bg-white shrink-0">
+        &copy; {{ new Date().getFullYear() }} {{ t('誠港金融股份有限公司 Canton Mutual Financial Limited', 'Canton Mutual Financial Limited', '诚港金融股份有限公司 Canton Mutual Financial Limited') }}. All rights reserved. {{ APP_VERSION }}
+      </footer>
 
       <!-- Mobile Bottom Tab -->
       <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-30">
