@@ -217,7 +217,7 @@ const langs: { mode: LangMode; label: string }[] = [
         </div>
         <!-- System Title -->
         <div class="hidden lg:block flex-1">
-          <span class="text-2xl font-bold text-slate-800">{{ t('誠港金融證券交易系統', 'CMFinancial Securities Trading System', '诚港金融证券交易系统') }}</span>
+          <span class="text-4xl font-bold text-slate-900">{{ t('誠港金融證券交易系統', 'CMFinancial Securities Trading System', '诚港金融证券交易系统') }}</span>
         </div>
         <div class="flex items-center gap-3">
           <!-- Font Size Toggle -->
@@ -319,7 +319,7 @@ const langs: { mode: LangMode; label: string }[] = [
       </main>
 
       <!-- Footer (Desktop) -->
-      <footer class="hidden lg:block py-3 px-4 text-center text-xs text-gray-400 border-t border-gray-200 bg-white shrink-0">
+      <footer class="hidden lg:block py-3 px-4 text-center text-sm text-gray-600 border-t border-gray-200 bg-white shrink-0">
         &copy; {{ new Date().getFullYear() }} {{ t('誠港金融股份有限公司 Canton Mutual Financial Limited', 'Canton Mutual Financial Limited', '诚港金融股份有限公司 Canton Mutual Financial Limited') }}. All rights reserved. {{ APP_VERSION }}
       </footer>
 
