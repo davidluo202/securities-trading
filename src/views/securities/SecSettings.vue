@@ -102,7 +102,7 @@ async function saveProfile() {
     localStorage.setItem('sec-user-surname-en', userSurnameEn.value)
     localStorage.setItem('sec-user-name-en', userNameEn.value)
     profileSaved.value = true
-    setTimeout(() => { profileSaved.value = false }, 2000)
+    setTimeout(() => { profileSaved.value = false }, 3000)
   } catch { /* silent */ }
   finally { profileSaving.value = false }
 }
@@ -347,7 +347,7 @@ function maskAccount(num: string) {
           <button class="px-6 py-3 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="profileSaving" @click="saveAndExit">
             {{ t('保存並退出', 'Save & Exit', '保存并退出') }}
           </button>
-          <span v-if="profileSaved" class="text-green-600 text-sm font-bold">{{ t('已保存', 'Saved', '已保存') }}</span>
+          <span v-if="profileSaved" class="px-4 py-2 bg-green-100 border border-green-400 text-green-700 text-sm font-bold rounded-lg animate-pulse">✅ {{ t('保存成功！', 'Saved!', '保存成功！') }}</span>
         </div>
       </div>
     </div>
