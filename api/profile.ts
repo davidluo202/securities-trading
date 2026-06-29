@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         firstname_en: client.firstname_en || '',
         gender: client.gender || 'male',
         data: { id: client.id, client_id: client.id },
-        dob: client.dob ? String(client.dob).split('T')[0] : '',
+        dob: client.dob ? (client.dob instanceof Date ? client.dob.toISOString().split('T')[0] : String(client.dob).split('T')[0]) : '',
         phone: client.phone || '',
         phoneCountry: client.phone_country || '+852',
         phoneVerified: !!client.phone_verified,
