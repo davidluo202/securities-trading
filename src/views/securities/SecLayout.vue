@@ -76,15 +76,19 @@ const greeting = computed(() => {
 })
 
 const userName = computed(() => {
-  // 问候语只用姓
+  // 优先用姓
   const surname = localStorage.getItem('sec-user-surname') || ''
   if (surname) return surname
-  // 兼容旧数据：取全名第一个字
-  const fullName = localStorage.getItem('sec-user-name') || ''
-  return fullName.charAt(0) || 'David'
+  // 没有姓则用邮箱前缀
+  const email = localStorage.getItem('sec-user-email') || ''
+  if (email) return email.split('@')[0]
+  return 'User'
 })
 
+const hasSurname = computed(() => !!(localStorage.getItem('sec-user-surname')))
+
 const userHonorific = computed(() => {
+  if (!hasSurname.value) return t('先生/女士', 'Sir/Madam', '先生/女士')
   const gender = localStorage.getItem('sec-user-gender')
   if (gender === 'female') return t('女士', 'Ms.', '女士')
   return t('先生', 'Mr.', '先生')
