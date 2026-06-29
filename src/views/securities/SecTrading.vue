@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useLanguage } from '../../composables/useLanguage'
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, type IChartApi, type ISeriesApi } from 'lightweight-charts'
 
 const { t } = useLanguage()
+const route = useRoute()
 
 // Search
 const searchQuery = ref('')
@@ -404,7 +406,20 @@ function submitOrder() {
 function onBodyClick() {
   showResults.value = false
 }
-onMounted(() => { document.addEventListener('click', onBodyClick) })
+onMounted(() => {
+  document.addEventListener('click', onBodyClick)
+  // Auto-select stock from query parameter (from watchlist "下单" button)
+  const sym = route.query.symbol as string
+  if (sym) {
+    fetch(`/api/stock-search?q=${encodeURIComponent(sym.replace('.HK','').replace('.SH','').replace('.SZ',''))}`)
+      .then(r => r.json())
+      .then(results => {
+        const match = results.find((r: any) => r.symbol === sym) || results[0]
+        if (match) selectStock({ symbol: match.symbol, name: match.name })
+      })
+      .catch(() => {})
+  }
+})
 onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
 </script>
 

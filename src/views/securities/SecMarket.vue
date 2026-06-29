@@ -375,13 +375,19 @@ onUnmounted(() => {
                 </td>
                 <td class="px-6 py-4 text-right text-slate-500">{{ s.volume }}</td>
                 <td class="px-6 py-4 text-center">
-                  <button
-                    class="text-slate-400 hover:text-red-500 transition-colors"
-                    :title="t('刪除', 'Remove', '删除')"
-                    @click.stop="removeFromWatchlist(s.symbol)"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                  </button>
+                  <div class="flex items-center justify-center gap-2">
+                    <button
+                      class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                      @click.stop="router.push({ path: '/sec/trading', query: { symbol: s.symbol } })"
+                    >{{ t('下單', 'Trade', '下单') }}</button>
+                    <button
+                      class="text-slate-400 hover:text-red-500 transition-colors"
+                      :title="t('刪除', 'Remove', '删除')"
+                      @click.stop="removeFromWatchlist(s.symbol)"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>

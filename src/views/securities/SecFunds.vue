@@ -33,10 +33,15 @@ const depositAmount = ref('')
 const depositDisplay = ref('')
 const depositSubmitted = ref(false)
 
-function formatAmountInput(val: string) {
+function formatAmountInput(val: string, addDecimals = false) {
   const num = val.replace(/[^0-9.]/g, '')
+  if (!num) return ''
   const parts = num.split('.')
   const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  if (addDecimals) {
+    const dec = parts.length > 1 ? parts[1].slice(0, 2).padEnd(2, '0') : '00'
+    return intPart + '.' + dec
+  }
   const decPart = parts.length > 1 ? '.' + parts[1].slice(0, 2) : ''
   return intPart + decPart
 }
@@ -44,6 +49,11 @@ function onAmountInput(e: Event) {
   const raw = (e.target as HTMLInputElement).value.replace(/,/g, '')
   depositAmount.value = raw
   depositDisplay.value = formatAmountInput(raw)
+}
+function onAmountBlur() {
+  if (depositAmount.value) {
+    depositDisplay.value = formatAmountInput(depositAmount.value, true)
+  }
 }
 
 async function submitDeposit() {
@@ -187,6 +197,7 @@ async function submitDeposit() {
             <input
               :value="depositDisplay"
               @input="onAmountInput"
+              @blur="onAmountBlur"
               type="text"
               inputmode="decimal"
               placeholder="0.00"
