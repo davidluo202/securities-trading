@@ -30,7 +30,21 @@ function maskAccount(num: string) {
 // Deposit flow
 const showDeposit = ref(false)
 const depositAmount = ref('')
+const depositDisplay = ref('')
 const depositSubmitted = ref(false)
+
+function formatAmountInput(val: string) {
+  const num = val.replace(/[^0-9.]/g, '')
+  const parts = num.split('.')
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const decPart = parts.length > 1 ? '.' + parts[1].slice(0, 2) : ''
+  return intPart + decPart
+}
+function onAmountInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/,/g, '')
+  depositAmount.value = raw
+  depositDisplay.value = formatAmountInput(raw)
+}
 
 async function submitDeposit() {
   if (!depositAmount.value || parseFloat(depositAmount.value) <= 0) return
@@ -73,6 +87,7 @@ async function submitDeposit() {
     depositSubmitted.value = false
     showDeposit.value = false
     depositAmount.value = ''
+    depositDisplay.value = ''
   }, 2000)
 }
 </script>
@@ -170,12 +185,12 @@ async function submitDeposit() {
               <label class="text-sm font-semibold text-slate-700">{{ t('金額', 'Amount', '金额') }} ({{ selectedCurrency }})</label>
             </div>
             <input
-              v-model="depositAmount"
-              type="number"
-              min="0"
-              step="1000"
+              :value="depositDisplay"
+              @input="onAmountInput"
+              type="text"
+              inputmode="decimal"
               placeholder="0.00"
-              class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-lg font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-right"
             />
           </div>
           <button

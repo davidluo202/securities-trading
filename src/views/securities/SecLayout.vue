@@ -53,13 +53,26 @@ const sidebarLogo = computed(() => {
 const currentTime = ref(new Date())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
-onMounted(() => {
+onMounted(async () => {
   clockTimer = setInterval(() => { currentTime.value = new Date() }, 1000)
   applyFontSize()
   loadWeather()
-  setInterval(loadWeather, 600000) // refresh weather every 10 min
+  setInterval(loadWeather, 600000)
   refreshUnreadCount()
   notifTimer = setInterval(refreshUnreadCount, 2000)
+  // Load profile from DB to sync localStorage
+  const email = localStorage.getItem('sec-user-email')
+  if (email) {
+    try {
+      const res = await fetch(`/api/profile?email=${encodeURIComponent(email)}`)
+      const data = await res.json()
+      if (data.success) {
+        if (data.surname) localStorage.setItem('sec-user-surname', data.surname)
+        if (data.firstname || data.surname) localStorage.setItem('sec-user-name', (data.surname || '') + (data.firstname || ''))
+        if (data.gender) localStorage.setItem('sec-user-gender', data.gender)
+      }
+    } catch {}
+  }
 })
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
