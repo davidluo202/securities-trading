@@ -5,7 +5,7 @@ const { t, langMode, setLang } = useLanguage()
 
 const notifications = ref(true)
 const confirmBeforeOrder = ref(true)
-const defaultOrderType = ref('limit')
+const defaultOrderType = ref('market')
 const defaultMarket = ref('HK')
 
 // --- Personal Info (loaded from DB) ---
@@ -14,6 +14,21 @@ const userFirstname = ref('')
 const userName = ref('')
 const userGender = ref('male')
 const userDob = ref('')
+const dobYear = ref('')
+const dobMonth = ref('')
+const dobDay = ref('')
+const years = Array.from({ length: 80 }, (_, i) => String(new Date().getFullYear() - 18 - i))
+const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+const daysInMonth = computed(() => {
+  const y = parseInt(dobYear.value) || 2000
+  const m = parseInt(dobMonth.value) || 1
+  return Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => String(i + 1).padStart(2, '0'))
+})
+function syncDob() {
+  if (dobYear.value && dobMonth.value && dobDay.value) {
+    userDob.value = `${dobYear.value}-${dobMonth.value}-${dobDay.value}`
+  }
+}
 const profileSaved = ref(false)
 const profileSaving = ref(false)
 const userEmail = ref(localStorage.getItem('sec-user-email') || '')
@@ -27,7 +42,11 @@ onMounted(async () => {
       if (data.surname) userSurname.value = data.surname
       if (data.firstname) userFirstname.value = data.firstname
       if (data.gender) userGender.value = data.gender
-      if (data.dob) userDob.value = data.dob.split('T')[0]
+      if (data.dob) {
+        userDob.value = data.dob.split('T')[0]
+        const parts = userDob.value.split('-')
+        if (parts.length === 3) { dobYear.value = parts[0]; dobMonth.value = parts[1]; dobDay.value = parts[2] }
+      }
       userName.value = (data.surname || '') + (data.firstname || '')
       if (data.phone) {
         const cc = data.phoneCountry || '+852'
@@ -259,11 +278,11 @@ function maskAccount(num: string) {
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name', '姓') }}</label>
-            <input v-model="userSurname" type="text" :placeholder="t('如：郑', 'e.g. Zheng', '如：郑')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. Zhang', '如：张')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name', '名') }}</label>
-            <input v-model="userFirstname" type="text" :placeholder="t('如：立坤', 'e.g. Likun', '如：立坤')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. San', '如：三')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
         <div>
@@ -275,7 +294,20 @@ function maskAccount(num: string) {
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('出生日期', 'Date of Birth', '出生日期') }} <span class="text-slate-400 font-normal">({{ t('選填', 'Optional', '选填') }})</span></label>
-          <input v-model="userDob" type="date" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          <div class="flex gap-3">
+            <select v-model="dobYear" @change="syncDob()" class="flex-1 border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+              <option value="">{{ t('年', 'Year', '年') }}</option>
+              <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+            </select>
+            <select v-model="dobMonth" @change="syncDob()" class="flex-1 border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+              <option value="">{{ t('月', 'Month', '月') }}</option>
+              <option v-for="m in months" :key="m" :value="m">{{ m }}{{ t('月', '', '月') }}</option>
+            </select>
+            <select v-model="dobDay" @change="syncDob()" class="flex-1 border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+              <option value="">{{ t('日', 'Day', '日') }}</option>
+              <option v-for="d in daysInMonth" :key="d" :value="d">{{ d }}{{ t('日', '', '日') }}</option>
+            </select>
+          </div>
         </div>
         <div class="flex items-center gap-4 pt-1">
           <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="profileSaving" @click="saveProfile">
