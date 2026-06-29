@@ -32,9 +32,30 @@ const showDeposit = ref(false)
 const depositAmount = ref('')
 const depositSubmitted = ref(false)
 
-function submitDeposit() {
+async function submitDeposit() {
   if (!depositAmount.value || parseFloat(depositAmount.value) <= 0) return
-  // Save to fund transactions (for history page)
+  const userEmail = localStorage.getItem('sec-user-email') || ''
+  try {
+    // Look up client ID by email
+    const clientRes = await fetch(`/api/profile?email=${encodeURIComponent(userEmail)}`)
+    const clientData = await clientRes.json()
+    const clientId = clientData?.data?.client_id || clientData?.data?.id
+    if (clientId) {
+      await fetch('/api/funds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          type: 'deposit',
+          amount: depositAmount.value,
+          currency: selectedCurrency.value,
+          bankName: selectedBankIndex.value >= 0 ? bankAccounts.value[selectedBankIndex.value]?.bankName : '',
+          remarks: '证券系统入金',
+        }),
+      })
+    }
+  } catch { /* silent - also save to localStorage as fallback */ }
+  // Keep localStorage fallback
   try {
     const txns = JSON.parse(localStorage.getItem('sec-fund-transactions') || '[]')
     const now = new Date()
@@ -44,7 +65,6 @@ function submitDeposit() {
       currency: selectedCurrency.value,
       status: 'pending',
       date: now.toISOString().replace('T', ' ').slice(0, 19),
-      ref: `DEP-${now.getFullYear().toString().slice(2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(txns.length+1).padStart(4,'0')}`,
     })
     localStorage.setItem('sec-fund-transactions', JSON.stringify(txns))
   } catch { /* silent */ }
