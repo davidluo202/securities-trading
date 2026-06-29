@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import pg from 'pg';
 const { Pool } = pg;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 3 });
+const RAILWAY_URL = 'postgresql://postgres:XCBgJFsPbtJgiaCGaKgQXxnnhTJzyusL@switchyard.proxy.rlwy.net:45054/railway';
+const pool = new Pool({ connectionString: process.env.DATABASE_URL || RAILWAY_URL, ssl: { rejectUnauthorized: false }, max: 3 });
 const SECRET = process.env.VERIFY_SECRET || 'cmf-otc-client-verify-secret';
 
 function hashPassword(password: string): string {
