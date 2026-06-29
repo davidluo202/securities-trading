@@ -55,20 +55,36 @@ async function loadCaptcha() {
 
 onMounted(loadCaptcha)
 
-function handleLogin() {
+async function handleLogin() {
   loginError.value = ''
   if (!loginEmail.value) { loginError.value = t('請輸入郵箱', 'Please enter email', '请输入邮箱'); return }
   if (!loginPassword.value) { loginError.value = t('請輸入密碼', 'Please enter password', '请输入密码'); return }
   if (!loginCaptcha.value || loginCaptcha.value.length < 4) { loginError.value = t('請輸入驗證碼', 'Please enter captcha', '请输入验证码'); return }
 
-  // TODO: call backend login API
   loginSubmitting.value = true
-  setTimeout(() => {
-    loginSubmitting.value = false
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginEmail.value.toLowerCase(), password: loginPassword.value, captchaToken: loginCaptchaToken.value, captchaCode: loginCaptcha.value }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.success) {
+      loginError.value = data.error || t('登錄失敗', 'Login failed', '登录失败')
+      loadCaptcha()
+      return
+    }
     localStorage.setItem('sec-trade-mode', paperMode.value ? 'paper' : 'live')
     localStorage.setItem('sec-authenticated', 'true')
+    localStorage.setItem('sec-user-email', data.email || loginEmail.value.toLowerCase())
+    localStorage.setItem('sec-auth-token', data.token)
+    if (data.name) localStorage.setItem('sec-user-name', data.name)
     router.push('/sec')
-  }, 500)
+  } catch {
+    loginError.value = t('網絡錯誤', 'Network error', '网络错误')
+  } finally {
+    loginSubmitting.value = false
+  }
 }
 
 // --- REGISTER ---
@@ -129,18 +145,31 @@ async function verifyRegCode() {
   regSubmitting.value = false
 }
 
-function handleRegister() {
+async function handleRegister() {
   regError.value = ''
   if (!regPassword.value || regPassword.value.length < 8) { regError.value = t('密碼至少8位', 'Password must be at least 8 characters', '密码至少8位'); return }
   if (regPassword.value !== regPasswordConfirm.value) { regError.value = t('兩次密碼不一致', 'Passwords do not match', '两次密码不一致'); return }
-  // TODO: call backend register API
+
   regSubmitting.value = true
-  setTimeout(() => {
-    regSubmitting.value = false
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: regEmail.value.toLowerCase(), code: regCode.value, token: regToken.value, name: regEmail.value.split('@')[0], password: regPassword.value }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.success) {
+      regError.value = data.error || t('註冊失敗', 'Registration failed', '注册失败')
+      return
+    }
     tab.value = 'login'
     loginEmail.value = regEmail.value
     regStep.value = 'email'; regEmail.value = ''; regCode.value = ''; regPassword.value = ''; regPasswordConfirm.value = ''
-  }, 500)
+  } catch {
+    regError.value = t('網絡錯誤', 'Network error', '网络错误')
+  } finally {
+    regSubmitting.value = false
+  }
 }
 </script>
 

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
 function getSecret(): string {
-  return process.env.VERIFY_SECRET || 'cmf-sec-verify-secret';
+  return process.env.VERIFY_SECRET || 'cmf-otc-client-verify-secret';
 }
 
 function generateCaptchaText(): string {
@@ -64,11 +64,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const svg = generateCaptchaSvg(text);
   const image = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 
-  // Sign the captcha text
+  // Sign the captcha - use same format as OTC: "expiry.sig"
   const expires = Date.now() + 5 * 60 * 1000; // 5 min
-  const payload = `captcha:${text.toLowerCase()}:${expires}`;
-  const sig = crypto.createHmac('sha256', getSecret()).update(payload).digest('hex');
-  const captchaToken = Buffer.from(JSON.stringify({ text: text.toLowerCase(), expires, sig })).toString('base64');
+  const sig = crypto.createHmac('sha256', getSecret()).update(`${text.toLowerCase()}:${expires}`).digest('hex');
+  const captchaToken = `${expires}.${sig}`;
 
   return res.status(200).json({ image, captchaToken });
 }

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
 function getSecret(): string {
-  return process.env.VERIFY_SECRET || 'cmf-sec-verify-secret';
+  return process.env.VERIFY_SECRET || 'cmf-otc-client-verify-secret';
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
