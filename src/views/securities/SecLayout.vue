@@ -119,6 +119,28 @@ const userHonorific = computed(() => {
   return t('先生', 'Mr.', '先生')
 })
 
+// Full greeting with bilingual support
+const fullGreeting = computed(() => {
+  const cnSurname = localStorage.getItem('sec-user-surname') || ''
+  const enSurname = localStorage.getItem('sec-user-surname-en') || ''
+  const gender = localStorage.getItem('sec-user-gender')
+  const honorCn = gender === 'female' ? '女士' : '先生'
+  const honorEn = gender === 'female' ? 'Ms.' : 'Mr.'
+
+  if (langMode.value === 'bilingual') {
+    const h = currentTime.value.getHours()
+    const greetCn = h < 6 ? '凌晨好' : h < 12 ? '早上好' : h < 14 ? '午安' : h < 18 ? '下午好' : '晚上好'
+    const greetEn = h < 6 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+    const nameCn = cnSurname ? `${cnSurname}${honorCn}` : userName.value
+    const nameEn = enSurname ? `${honorEn} ${enSurname}` : ''
+    return nameEn ? `${greetCn}，${nameCn}！${greetEn}, ${nameEn}` : `${greetCn}，${nameCn}！`
+  }
+  if (langMode.value === 'en') {
+    return `${greeting.value}, ${honorEn} ${enSurname || userName.value}！`
+  }
+  return `${greeting.value}，${userName.value}${userHonorific.value}！`
+})
+
 // Weather
 const weatherIcon = ref('🌤️')
 const weatherTemp = ref('')
@@ -194,7 +216,7 @@ const langs: { mode: LangMode; label: string }[] = [
       <!-- Clock + Greeting (yellow bg in paper mode) -->
       <div class="px-5 py-4 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
         <div class="text-xs mb-1" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
-        <div class="text-lg font-bold text-white">{{ weatherIcon }} {{ greeting }}{{ langMode === 'en' ? ', ' : '，' }}{{ langMode === 'en' ? userHonorific + ' ' + userName : userName + userHonorific }}！<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span><span v-if="weatherWarning" class="text-xs font-semibold text-red-400 ml-1">{{ weatherWarning }}</span></div>
+        <div class="text-lg font-bold text-white">{{ weatherIcon }} {{ fullGreeting }}<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span><span v-if="weatherWarning" class="text-xs font-semibold text-red-400 ml-1">{{ weatherWarning }}</span></div>
         <div v-if="paperMode" class="mt-2 px-2 py-1 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
           {{ t('⚠ 模擬盤模式', '⚠ Paper Trade Mode', '⚠ 模拟盘模式') }}
         </div>
@@ -306,7 +328,7 @@ const langs: { mode: LangMode; label: string }[] = [
           <!-- Mobile Greeting -->
           <div class="px-4 py-3 border-b border-slate-700" :class="paperMode ? 'bg-yellow-600/20' : ''">
             <div class="text-xs" :class="paperMode ? 'text-yellow-300' : 'text-slate-400'">🕐 {{ dateString }} {{ timeString }}</div>
-            <div class="text-base font-bold text-white mt-1">{{ weatherIcon }} {{ greeting }}{{ langMode === 'en' ? ', ' : '，' }}{{ langMode === 'en' ? userHonorific + ' ' + userName : userName + userHonorific }}！<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span></div>
+            <div class="text-base font-bold text-white mt-1">{{ weatherIcon }} {{ fullGreeting }}<span v-if="weatherTemp" class="text-sm font-normal text-slate-300 ml-1">{{ weatherTemp }}</span></div>
             <div v-if="paperMode" class="mt-1 px-2 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-xs font-bold text-center">
               {{ t('⚠ 模擬盤', '⚠ Paper', '⚠ 模拟盘') }}
             </div>
