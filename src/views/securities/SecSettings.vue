@@ -70,7 +70,10 @@ onMounted(async () => {
 
 async function saveAndExit() {
   await saveProfile()
-  history.back()
+  if (profileSaved.value) {
+    alert(t('✅ 保存成功！', '✅ Saved!', '✅ 保存成功！'))
+    history.back()
+  }
 }
 
 async function saveProfile() {
@@ -103,7 +106,9 @@ async function saveProfile() {
     localStorage.setItem('sec-user-name-en', userNameEn.value)
     profileSaved.value = true
     setTimeout(() => { profileSaved.value = false }, 3000)
-  } catch { /* silent */ }
+  } catch (e) {
+    alert(t('保存失敗，請重試', 'Save failed, please retry', '保存失败，请重试'))
+  }
   finally { profileSaving.value = false }
 }
 
@@ -298,27 +303,27 @@ function maskAccount(num: string) {
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name (CN)', '姓') }}</label>
-            <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. 张', '如：张')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. 张', '如：张')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name (CN)', '名') }}</label>
-            <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. 三', '如：三')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. 三', '如：三')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
         <p class="text-xs text-slate-400 mb-2 mt-4">{{ t('英文姓名', '英文姓名', 'English Name') }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文姓', 'Last Name (EN)', '英文姓') }}</label>
-            <input v-model="userSurnameEn" type="text" placeholder="e.g. Zhang" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input v-model="userSurnameEn" type="text" placeholder="e.g. Zhang" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文名', 'First Name (EN)', '英文名') }}</label>
-            <input v-model="userFirstnameEn" type="text" placeholder="e.g. San" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input v-model="userFirstnameEn" type="text" placeholder="e.g. San" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('性別', 'Gender', '性别') }}</label>
-          <select v-model="userGender" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+          <select v-model="userGender" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
             <option value="male">{{ t('男', 'Male', '男') }}</option>
             <option value="female">{{ t('女', 'Female', '女') }}</option>
           </select>
@@ -326,15 +331,15 @@ function maskAccount(num: string) {
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('出生日期', 'Date of Birth', '出生日期') }} <span class="text-slate-400 font-normal">({{ t('選填', 'Optional', '选填') }})</span></label>
           <div class="flex gap-3">
-            <select v-model="dobYear" @change="syncDob()" class="flex-1 border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+            <select v-model="dobYear" @change="syncDob()" class="flex-1 border-2 border-slate-500 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
               <option value="">{{ t('年', 'Year', '年') }}</option>
               <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
             </select>
-            <select v-model="dobMonth" @change="syncDob()" class="flex-1 border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+            <select v-model="dobMonth" @change="syncDob()" class="flex-1 border-2 border-slate-500 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
               <option value="">{{ t('月', 'Month', '月') }}</option>
               <option v-for="m in months" :key="m" :value="m">{{ m }}{{ t('月', '', '月') }}</option>
             </select>
-            <select v-model="dobDay" @change="syncDob()" class="flex-1 border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+            <select v-model="dobDay" @change="syncDob()" class="flex-1 border-2 border-slate-500 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
               <option value="">{{ t('日', 'Day', '日') }}</option>
               <option v-for="d in daysInMonth" :key="d" :value="d">{{ d }}{{ t('日', '', '日') }}</option>
             </select>
@@ -359,7 +364,7 @@ function maskAccount(num: string) {
         <div class="flex gap-3">
           <div :class="phoneVerified ? 'w-44' : 'w-36'">
             <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('區號', 'Code', '区号') }}</label>
-            <select v-model="phoneCountry" :disabled="phoneVerified" class="w-full border-2 border-slate-300 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400">
+            <select v-model="phoneCountry" :disabled="phoneVerified" class="w-full border-2 border-slate-500 rounded-xl px-3 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400">
               <option v-for="c in countryCodes" :key="c.code" :value="c.code">{{ c.label }}</option>
             </select>
           </div>
@@ -375,7 +380,7 @@ function maskAccount(num: string) {
                 inputmode="numeric"
                 :disabled="phoneVerified"
                 :placeholder="phoneDigitsHint + t('位數字', ' digits', '位数字')"
-                class="flex-1 border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                class="flex-1 border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:bg-slate-100 disabled:text-slate-400"
               />
               <span v-if="phoneVerified" class="flex items-center gap-1.5 text-green-600 font-bold text-sm whitespace-nowrap px-3">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -407,7 +412,7 @@ function maskAccount(num: string) {
               maxlength="6"
               autocomplete="one-time-code"
               :placeholder="t('輸入6位驗證碼', 'Enter 6-digit code', '输入6位验证码')"
-              class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono tracking-widest text-center text-lg"
+              class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono tracking-widest text-center text-lg"
             />
           </div>
           <div class="flex gap-3">
@@ -418,7 +423,7 @@ function maskAccount(num: string) {
             >
               {{ phoneVerifying ? t('驗證中...', 'Verifying...', '验证中...') : t('驗證', 'Verify', '验证') }}
             </button>
-            <button class="px-6 py-3 border-2 border-slate-300 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="phoneOtpSent = false; phoneOtpCode = ''; phoneError = ''">
+            <button class="px-6 py-3 border-2 border-slate-500 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="phoneOtpSent = false; phoneOtpCode = ''; phoneError = ''">
               {{ t('取消', 'Cancel', '取消') }}
             </button>
           </div>
@@ -441,7 +446,7 @@ function maskAccount(num: string) {
 
       <!-- Saved accounts list -->
       <div v-if="bankAccounts.length > 0" class="space-y-3 mb-5">
-        <div v-for="(acct, idx) in bankAccounts" :key="idx" class="flex items-center justify-between border-2 border-slate-200 rounded-xl px-5 py-4 hover:border-slate-300 transition-colors">
+        <div v-for="(acct, idx) in bankAccounts" :key="idx" class="flex items-center justify-between border-2 border-slate-200 rounded-xl px-5 py-4 hover:border-slate-500 transition-colors">
           <div class="text-base">
             <span class="font-bold text-slate-800">{{ acct.bankName }}</span>
             <span class="text-slate-300 mx-3">|</span>
@@ -465,18 +470,18 @@ function maskAccount(num: string) {
       <div v-if="showBankForm" class="border-2 border-slate-200 rounded-2xl p-6 space-y-4 bg-slate-50">
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('銀行名稱', 'Bank Name', '银行名称') }}</label>
-          <select v-model="newBank.bankName" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
+          <select v-model="newBank.bankName" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
             <option value="" disabled>{{ t('請選擇', 'Select', '请选择') }}</option>
             <option v-for="b in hkBanks" :key="b" :value="b">{{ b }}</option>
           </select>
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('賬戶號碼', 'Account Number', '账户号码') }}</label>
-          <input v-model="newBank.accountNumber" type="text" inputmode="numeric" :placeholder="t('9-12位數字', '9-12 digits', '9-12位数字')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          <input v-model="newBank.accountNumber" type="text" inputmode="numeric" :placeholder="t('9-12位數字', '9-12 digits', '9-12位数字')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('幣種', 'Currency', '币种') }}</label>
-          <select v-model="newBank.currency" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
+          <select v-model="newBank.currency" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
             <option value="HKD">HKD</option>
             <option value="CNY">CNY</option>
             <option value="USD">USD</option>
@@ -493,7 +498,7 @@ function maskAccount(num: string) {
           <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all" @click="saveBankAccount">
             {{ t('保存', 'Save', '保存') }}
           </button>
-          <button class="px-6 py-3 border-2 border-slate-300 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="showBankForm = false; bankFormError = ''">
+          <button class="px-6 py-3 border-2 border-slate-500 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="showBankForm = false; bankFormError = ''">
             {{ t('取消', 'Cancel', '取消') }}
           </button>
         </div>
@@ -511,7 +516,7 @@ function maskAccount(num: string) {
           { mode: 'bilingual' as LangMode, label: '雙語 Bilingual' },
         ])" :key="l.mode"
           class="px-5 py-3.5 rounded-xl text-base font-bold border-2 transition-all"
-          :class="langMode === l.mode ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'"
+          :class="langMode === l.mode ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-500'"
           @click="setLang(l.mode)"
         >{{ l.label }}</button>
       </div>
@@ -533,14 +538,14 @@ function maskAccount(num: string) {
         </div>
         <div>
           <label class="text-base text-slate-700 font-medium block mb-2">{{ t('預設委託類型', 'Default Order Type', '默认委托类型') }}</label>
-          <select v-model="defaultOrderType" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+          <select v-model="defaultOrderType" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
             <option value="limit">{{ t('限價單', 'Limit', '限价单') }}</option>
             <option value="market">{{ t('市價單', 'Market', '市价单') }}</option>
           </select>
         </div>
         <div>
           <label class="text-base text-slate-700 font-medium block mb-2">{{ t('預設市場', 'Default Market', '默认市场') }}</label>
-          <select v-model="defaultMarket" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
+          <select v-model="defaultMarket" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
             <option value="HK">{{ t('港股', 'HK Stock', '港股') }}</option>
             <option value="A">{{ t('A股', 'A-Share', 'A股') }}</option>
             <option value="US">{{ t('美股', 'US Stock', '美股') }}</option>
