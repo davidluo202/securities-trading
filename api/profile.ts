@@ -12,6 +12,8 @@ async function ensureColumns() {
   const cols = [
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS surname VARCHAR(50)",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS firstname VARCHAR(50)",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS surname_en VARCHAR(50)",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS firstname_en VARCHAR(50)",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS gender VARCHAR(10) DEFAULT 'male'",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS dob DATE",
     "ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone_country VARCHAR(10) DEFAULT '+852'",
@@ -42,7 +44,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: true,
         surname: client.surname || '',
         firstname: client.firstname || '',
+        surname_en: client.surname_en || '',
+        firstname_en: client.firstname_en || '',
         gender: client.gender || 'male',
+        data: { id: client.id, client_id: client.id },
         dob: client.dob ? String(client.dob).split('T')[0] : '',
         phone: client.phone || '',
         phoneCountry: client.phone_country || '+852',
@@ -66,6 +71,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       add('surname', b.surname);
       add('firstname', b.firstname);
+      add('surname_en', b.surname_en);
+      add('firstname_en', b.firstname_en);
       add('gender', b.gender);
       add('dob', b.dob || null);
       add('phone', b.phone);

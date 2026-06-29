@@ -19,9 +19,7 @@ onMounted(async () => {
     const profileData = await profileRes.json()
     const clientId = profileData?.data?.client_id || profileData?.data?.id
     if (!clientId) return
-    const balRes = await fetch(`/api/funds?client_id=${clientId}`)
-    const balData = await balRes.json()
-    // Try client_balances from OTC system
+    // Load client_balances from shared OTC system
     const cbRes = await fetch(`https://otc-trading-system.vercel.app/api/funds?id=balance&client_id=${clientId}`)
     const cbData = await cbRes.json()
     if (cbData.success && cbData.data) {

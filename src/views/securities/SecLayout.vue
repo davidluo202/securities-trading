@@ -69,6 +69,8 @@ onMounted(async () => {
       if (data.success) {
         if (data.surname) localStorage.setItem('sec-user-surname', data.surname)
         if (data.firstname || data.surname) localStorage.setItem('sec-user-name', (data.surname || '') + (data.firstname || ''))
+        if (data.surname_en) localStorage.setItem('sec-user-surname-en', data.surname_en)
+        if (data.firstname_en || data.surname_en) localStorage.setItem('sec-user-name-en', ((data.firstname_en || '') + ' ' + (data.surname_en || '')).trim())
         if (data.gender) localStorage.setItem('sec-user-gender', data.gender)
       }
     } catch {}
@@ -89,16 +91,26 @@ const greeting = computed(() => {
 })
 
 const userName = computed(() => {
-  // 优先用姓
+  const isEn = langMode.value === 'en' || langMode.value === 'bilingual'
+  // English mode: use English surname
+  if (isEn) {
+    const enName = localStorage.getItem('sec-user-surname-en') || ''
+    if (enName) return enName
+  }
+  // Chinese mode: use Chinese surname
   const surname = localStorage.getItem('sec-user-surname') || ''
   if (surname) return surname
-  // 没有姓则用邮箱前缀
+  // Fallback: email prefix
   const email = localStorage.getItem('sec-user-email') || ''
   if (email) return email.split('@')[0]
   return 'User'
 })
 
-const hasSurname = computed(() => !!(localStorage.getItem('sec-user-surname')))
+const hasSurname = computed(() => {
+  const isEn = langMode.value === 'en' || langMode.value === 'bilingual'
+  if (isEn) return !!(localStorage.getItem('sec-user-surname-en') || localStorage.getItem('sec-user-surname'))
+  return !!(localStorage.getItem('sec-user-surname'))
+})
 
 const userHonorific = computed(() => {
   if (!hasSurname.value) return t('先生/女士', 'Sir/Madam', '先生/女士')

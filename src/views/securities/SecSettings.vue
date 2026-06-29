@@ -12,6 +12,9 @@ const defaultMarket = ref('HK')
 const userSurname = ref('')
 const userFirstname = ref('')
 const userName = ref('')
+const userSurnameEn = ref('')
+const userFirstnameEn = ref('')
+const userNameEn = ref('')
 const userGender = ref('male')
 const userDob = ref('')
 const dobYear = ref('')
@@ -41,6 +44,9 @@ onMounted(async () => {
     if (data.success) {
       if (data.surname) userSurname.value = data.surname
       if (data.firstname) userFirstname.value = data.firstname
+      if (data.surname_en) userSurnameEn.value = data.surname_en
+      if (data.firstname_en) userFirstnameEn.value = data.firstname_en
+      userNameEn.value = ((data.firstname_en || '') + ' ' + (data.surname_en || '')).trim()
       if (data.gender) userGender.value = data.gender
       if (data.dob) {
         userDob.value = data.dob.split('T')[0]
@@ -73,12 +79,15 @@ async function saveProfile() {
   try {
     const fullName = userSurname.value + userFirstname.value
     userName.value = fullName
+    userNameEn.value = ((userFirstnameEn.value || '') + ' ' + (userSurnameEn.value || '')).trim()
     await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         surname: userSurname.value,
         firstname: userFirstname.value,
+        surname_en: userSurnameEn.value,
+        firstname_en: userFirstnameEn.value,
         gender: userGender.value,
         dob: userDob.value || null,
         phone: phoneVerified.value ? (phoneCountry.value + phoneNumber.value.replace(/\s/g, '')) : '',
@@ -90,6 +99,8 @@ async function saveProfile() {
     localStorage.setItem('sec-user-surname', userSurname.value)
     localStorage.setItem('sec-user-name', fullName)
     localStorage.setItem('sec-user-gender', userGender.value)
+    localStorage.setItem('sec-user-surname-en', userSurnameEn.value)
+    localStorage.setItem('sec-user-name-en', userNameEn.value)
     profileSaved.value = true
     setTimeout(() => { profileSaved.value = false }, 2000)
   } catch { /* silent */ }
@@ -233,7 +244,8 @@ const newBank = ref({ bankName: '', accountNumber: '', currency: 'HKD', holderNa
 // Auto-fill holder name when opening bank form
 function openBankForm() {
   showBankForm.value = true
-  if (userName.value) newBank.value.holderName = userName.value
+  // 优先使用英文姓名作为户名
+  newBank.value.holderName = userNameEn.value || userName.value || ''
 }
 
 const hkBanks = ['HSBC', 'Hang Seng', 'BOC', 'Standard Chartered', 'ICBC Asia', 'CMB Wing Lung', 'DBS', 'Citibank']
@@ -282,14 +294,26 @@ function maskAccount(num: string) {
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
       <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('個人信息', 'Personal Info', '个人信息') }}</h3>
       <div class="space-y-4">
+        <p class="text-xs text-slate-400 mb-2">{{ t('中文姓名', '中文姓名', 'Chinese Name') }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name', '姓') }}</label>
-            <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. Zhang', '如：张')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name (CN)', '姓') }}</label>
+            <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. 张', '如：张')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name', '名') }}</label>
-            <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. San', '如：三')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name (CN)', '名') }}</label>
+            <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. 三', '如：三')" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mb-2 mt-4">{{ t('英文姓名', '英文姓名', 'English Name') }}</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文姓', 'Last Name (EN)', '英文姓') }}</label>
+            <input v-model="userSurnameEn" type="text" placeholder="e.g. Zhang" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文名', 'First Name (EN)', '英文名') }}</label>
+            <input v-model="userFirstnameEn" type="text" placeholder="e.g. San" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
         <div>
@@ -460,7 +484,7 @@ function maskAccount(num: string) {
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('持有人姓名', 'Account Holder Name', '持有人姓名') }}</label>
-          <input :value="userName || newBank.holderName" readonly
+          <input :value="userNameEn || userName || newBank.holderName" readonly
             class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base bg-slate-50 text-slate-600 cursor-not-allowed" />
           <p class="text-xs text-slate-400 mt-1">{{ t('自動從個人信息帶入', 'Auto-filled from profile', '自动从个人信息带入') }}</p>
         </div>
