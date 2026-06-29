@@ -30,7 +30,7 @@ const cardClass = computed(() =>
 )
 
 // Tab
-const tab = ref<'login' | 'register'>('login')
+const tab = ref<'login' | 'register' | 'reset'>('login')
 
 // --- LOGIN ---
 const loginEmail = ref('')
@@ -171,6 +171,87 @@ async function handleRegister() {
     regSubmitting.value = false
   }
 }
+
+// --- RESET PASSWORD ---
+const resetEmail = ref('')
+const resetCode = ref('')
+const resetToken = ref('')
+const resetNewPwd = ref('')
+const resetConfirmPwd = ref('')
+const resetError = ref('')
+const resetStep = ref<'email' | 'verify' | 'password'>('email')
+const resetSubmitting = ref(false)
+const resetCountdown = ref(0)
+let resetTimer: ReturnType<typeof setInterval> | null = null
+
+async function sendResetCode() {
+  if (resetCountdown.value > 0 || !resetEmail.value) return
+  resetError.value = ''
+  resetSubmitting.value = true
+  try {
+    const res = await fetch('/api/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail.value.toLowerCase() }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed')
+    resetToken.value = data.token
+    resetStep.value = 'verify'
+  } catch (e: any) {
+    resetError.value = e.message || t('發送失敗', 'Failed', '发送失败')
+    resetSubmitting.value = false
+    return
+  }
+  resetSubmitting.value = false
+  resetCountdown.value = 60
+  resetTimer = setInterval(() => {
+    resetCountdown.value--
+    if (resetCountdown.value <= 0) { if (resetTimer) clearInterval(resetTimer); resetTimer = null }
+  }, 1000)
+}
+
+async function verifyResetCode() {
+  if (!resetCode.value) { resetError.value = t('請輸入驗證碼', 'Enter code', '请输入验证码'); return }
+  resetError.value = ''
+  resetSubmitting.value = true
+  try {
+    const res = await fetch('/api/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken.value, code: resetCode.value }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed')
+    resetStep.value = 'password'
+  } catch (e: any) {
+    resetError.value = e.message || t('驗證失敗', 'Failed', '验证失败')
+  }
+  resetSubmitting.value = false
+}
+
+async function handleReset() {
+  resetError.value = ''
+  if (!resetNewPwd.value || resetNewPwd.value.length < 8) { resetError.value = t('密碼至少8位', 'Min 8 chars', '密码至少8位'); return }
+  if (resetNewPwd.value !== resetConfirmPwd.value) { resetError.value = t('兩次密碼不一致', 'Mismatch', '两次密码不一致'); return }
+  resetSubmitting.value = true
+  try {
+    const res = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail.value.toLowerCase(), code: resetCode.value, token: resetToken.value, newPassword: resetNewPwd.value }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.success) { resetError.value = data.error || t('重置失敗', 'Failed', '重置失败'); return }
+    tab.value = 'login'
+    loginEmail.value = resetEmail.value
+    resetStep.value = 'email'; resetEmail.value = ''; resetCode.value = ''; resetNewPwd.value = ''; resetConfirmPwd.value = ''
+  } catch {
+    resetError.value = t('網絡錯誤', 'Network error', '网络错误')
+  } finally {
+    resetSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -260,7 +341,7 @@ async function handleRegister() {
               </a>
             </p>
             <p class="text-sm">
-              <a class="text-gray-500 cursor-pointer hover:text-gray-700">
+              <a class="text-blue-500 cursor-pointer hover:text-blue-700 font-medium" @click="tab = 'reset'; resetStep = 'email'; resetError = ''">
                 {{ t('忘記密碼？', 'Forgot Password?', '忘记密码？') }}
               </a>
             </p>
@@ -324,6 +405,60 @@ async function handleRegister() {
           <p class="text-center mt-5 text-sm text-gray-600">
             {{ t('已有賬戶？', 'Already have an account?', '已有账户？') }}
             <a class="text-blue-600 font-semibold cursor-pointer" @click="tab = 'login'">{{ t('登入', 'Login', '登录') }}</a>
+          </p>
+        </div>
+
+        <!-- ========== RESET PASSWORD ========== -->
+        <div v-if="tab === 'reset'">
+          <h3 class="text-xl font-bold text-gray-800 mb-4">{{ t('重置密碼', 'Reset Password', '重置密码') }}</h3>
+          <div v-if="resetError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ resetError }}</div>
+
+          <!-- Step 1: Email -->
+          <div v-if="resetStep === 'email'">
+            <div class="mb-5">
+              <label class="block text-base font-bold text-gray-800 mb-2">{{ t('郵箱', 'Email', '邮箱') }}</label>
+              <input v-model="resetEmail" type="email" :placeholder="t('請輸入註冊郵箱', 'Enter registered email', '请输入注册邮箱')"
+                class="w-full border-2 border-gray-500 rounded-lg px-4 py-3.5 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 bg-white" />
+            </div>
+            <button :disabled="resetSubmitting || !resetEmail" @click="sendResetCode"
+              class="w-full py-3.5 bg-blue-700 text-white rounded-lg text-base font-bold hover:bg-blue-800 disabled:opacity-50 transition-all">
+              {{ resetSubmitting ? t('發送中...', 'Sending...', '发送中...') : t('發送驗證碼', 'Send Code', '发送验证码') }}
+            </button>
+          </div>
+
+          <!-- Step 2: Verify -->
+          <div v-if="resetStep === 'verify'">
+            <p class="text-sm text-gray-600 mb-3">{{ t('驗證碼已發送至', 'Code sent to', '验证码已发送至') }} <b>{{ resetEmail }}</b></p>
+            <div class="mb-5">
+              <input v-model="resetCode" type="text" maxlength="6" :placeholder="t('6位驗證碼', '6-digit code', '6位验证码')"
+                class="w-full border-2 border-gray-500 rounded-lg px-4 py-3.5 text-center text-xl tracking-widest outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <button :disabled="resetSubmitting || !resetCode" @click="verifyResetCode"
+              class="w-full py-3.5 bg-blue-700 text-white rounded-lg text-base font-bold hover:bg-blue-800 disabled:opacity-50 transition-all">
+              {{ resetSubmitting ? t('驗證中...', 'Verifying...', '验证中...') : t('驗證', 'Verify', '验证') }}
+            </button>
+          </div>
+
+          <!-- Step 3: New Password -->
+          <div v-if="resetStep === 'password'">
+            <div class="mb-4">
+              <label class="block text-base font-bold text-gray-800 mb-2">{{ t('新密碼', 'New Password', '新密码') }}</label>
+              <input v-model="resetNewPwd" type="password" :placeholder="t('至少8位', 'Min 8 characters', '至少8位')"
+                class="w-full border-2 border-gray-500 rounded-lg px-4 py-3.5 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <div class="mb-5">
+              <label class="block text-base font-bold text-gray-800 mb-2">{{ t('確認密碼', 'Confirm Password', '确认密码') }}</label>
+              <input v-model="resetConfirmPwd" type="password" :placeholder="t('再輸一次', 'Enter again', '再输一次')"
+                class="w-full border-2 border-gray-500 rounded-lg px-4 py-3.5 text-base outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30" />
+            </div>
+            <button :disabled="resetSubmitting" @click="handleReset"
+              class="w-full py-3.5 bg-blue-700 text-white rounded-lg text-base font-bold hover:bg-blue-800 disabled:opacity-50 transition-all">
+              {{ resetSubmitting ? t('重置中...', 'Resetting...', '重置中...') : t('重置密碼', 'Reset Password', '重置密码') }}
+            </button>
+          </div>
+
+          <p class="text-center mt-5 text-sm text-gray-600">
+            <a class="text-blue-600 font-semibold cursor-pointer" @click="tab = 'login'">{{ t('返回登入', 'Back to Login', '返回登录') }}</a>
           </p>
         </div>
 
