@@ -230,10 +230,17 @@ const showBankForm = ref(false)
 const bankFormError = ref('')
 const newBank = ref({ bankName: '', accountNumber: '', currency: 'HKD', holderName: '' })
 
+// Auto-fill holder name when opening bank form
+function openBankForm() {
+  showBankForm.value = true
+  if (userName.value) newBank.value.holderName = userName.value
+}
+
 const hkBanks = ['HSBC', 'Hang Seng', 'BOC', 'Standard Chartered', 'ICBC Asia', 'CMB Wing Lung', 'DBS', 'Citibank']
 
 function saveBankAccount() {
   bankFormError.value = ''
+  newBank.value.holderName = userName.value || newBank.value.holderName
   if (!newBank.value.bankName || !newBank.value.accountNumber || !newBank.value.holderName) {
     bankFormError.value = t('請填寫所有必填項', 'Please fill in all required fields', '请填写所有必填项')
     return
@@ -426,7 +433,7 @@ function maskAccount(num: string) {
       <div v-else class="text-base text-slate-400 mb-5">{{ t('暫無銀行賬戶', 'No bank accounts saved', '暂无银行账户') }}</div>
 
       <!-- Add bank account button -->
-      <button v-if="!showBankForm" class="px-5 py-3 border-2 border-blue-600 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors" @click="showBankForm = true">
+      <button v-if="!showBankForm" class="px-5 py-3 border-2 border-blue-600 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors" @click="openBankForm()">
         {{ t('添加銀行賬戶', 'Add Bank Account', '添加银行账户') }}
       </button>
 
@@ -453,7 +460,9 @@ function maskAccount(num: string) {
         </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('持有人姓名', 'Account Holder Name', '持有人姓名') }}</label>
-          <input v-model="newBank.holderName" type="text" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+          <input :value="userName || newBank.holderName" readonly
+            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base bg-slate-50 text-slate-600 cursor-not-allowed" />
+          <p class="text-xs text-slate-400 mt-1">{{ t('自動從個人信息帶入', 'Auto-filled from profile', '自动从个人信息带入') }}</p>
         </div>
         <p v-if="bankFormError" class="text-red-600 text-sm font-semibold">{{ bankFormError }}</p>
         <div class="flex gap-3 pt-1">

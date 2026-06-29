@@ -3,7 +3,43 @@ import { ref, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage'
 const { t } = useLanguage()
 
+import { onMounted } from 'vue'
+
 const isPaper = localStorage.getItem('sec-trade-mode') === 'paper'
+
+// Load balance from DB
+const balance = ref({ hkd: 0, usd: 0, cny: 0 })
+const frozen = ref({ hkd: 0, usd: 0, cny: 0 })
+
+onMounted(async () => {
+  const email = localStorage.getItem('sec-user-email')
+  if (!email) return
+  try {
+    const profileRes = await fetch(`/api/profile?email=${encodeURIComponent(email)}`)
+    const profileData = await profileRes.json()
+    const clientId = profileData?.data?.client_id || profileData?.data?.id
+    if (!clientId) return
+    const balRes = await fetch(`/api/funds?client_id=${clientId}`)
+    const balData = await balRes.json()
+    // Try client_balances from OTC system
+    const cbRes = await fetch(`https://otc-trading-system.vercel.app/api/funds?id=balance&client_id=${clientId}`)
+    const cbData = await cbRes.json()
+    if (cbData.success && cbData.data) {
+      balance.value = {
+        hkd: parseFloat(cbData.data.balance_hkd) || 0,
+        usd: parseFloat(cbData.data.balance_usd) || 0,
+        cny: parseFloat(cbData.data.balance_cny) || 0,
+      }
+      frozen.value = {
+        hkd: parseFloat(cbData.data.frozen_hkd) || 0,
+        usd: parseFloat(cbData.data.frozen_usd) || 0,
+        cny: parseFloat(cbData.data.frozen_cny) || 0,
+      }
+    }
+  } catch {}
+})
+
+function fmtBal(n: number) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 // Bank accounts from settings
 interface BankAccount {
@@ -135,15 +171,15 @@ async function submitDeposit() {
           </div>
           <span class="text-xs bg-white/20 text-white px-3 py-1 rounded-lg font-bold">{{ t('活期', 'Cash', '活期') }}</span>
         </div>
-        <p class="text-3xl font-bold mb-4">0.00</p>
+        <p class="text-3xl font-bold mb-4">HK$ {{ fmtBal(balance.hkd) }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-white/10 rounded-xl px-4 py-3">
             <span class="text-sm opacity-80">{{ t('可用', 'Available', '可用') }}</span>
-            <p class="text-lg font-bold mt-0.5">0.00</p>
+            <p class="text-lg font-bold mt-0.5">{{ fmtBal(balance.hkd - frozen.hkd) }}</p>
           </div>
           <div class="bg-white/10 rounded-xl px-4 py-3">
             <span class="text-sm opacity-80">{{ t('凍結', 'Frozen', '冻结') }}</span>
-            <p class="text-lg font-bold mt-0.5">0.00</p>
+            <p class="text-lg font-bold mt-0.5">{{ fmtBal(frozen.hkd) }}</p>
           </div>
         </div>
       </div>
