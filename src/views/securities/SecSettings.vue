@@ -34,7 +34,15 @@ function syncDob() {
 }
 const profileSaved = ref(false)
 const profileSaving = ref(false)
+const fieldsSaved = ref(false)
 const userEmail = ref(localStorage.getItem('sec-user-email') || '')
+// If email missing (old login), try to extract from token
+if (!userEmail.value) {
+  const token = localStorage.getItem('sec-auth-token')
+  if (token) {
+    try { const d = JSON.parse(atob(token)); if (d.email) { userEmail.value = d.email; localStorage.setItem('sec-user-email', d.email) } } catch {}
+  }
+}
 
 onMounted(async () => {
   if (!userEmail.value) return
@@ -105,7 +113,8 @@ async function saveProfile() {
     localStorage.setItem('sec-user-surname-en', userSurnameEn.value)
     localStorage.setItem('sec-user-name-en', userNameEn.value)
     profileSaved.value = true
-    setTimeout(() => { profileSaved.value = false }, 3000)
+    fieldsSaved.value = true
+    setTimeout(() => { profileSaved.value = false; fieldsSaved.value = false }, 5000)
   } catch (e) {
     alert(t('保存失敗，請重試', 'Save failed, please retry', '保存失败，请重试'))
   }
@@ -302,22 +311,22 @@ function maskAccount(num: string) {
         <p class="text-xs text-slate-400 mb-2">{{ t('中文姓名', '中文姓名', 'Chinese Name') }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name (CN)', '姓') }}</label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name (CN)', '姓') }} <span v-if="fieldsSaved && userSurname" class="text-green-600">✓</span></label>
             <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. 张', '如：张')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name (CN)', '名') }}</label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name (CN)', '名') }} <span v-if="fieldsSaved && userFirstname" class="text-green-600">✓</span></label>
             <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. 三', '如：三')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
         <p class="text-xs text-slate-400 mb-2 mt-4">{{ t('英文姓名', '英文姓名', 'English Name') }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文姓', 'Last Name (EN)', '英文姓') }}</label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文姓', 'Last Name (EN)', '英文姓') }} <span v-if="fieldsSaved && userSurnameEn" class="text-green-600">✓</span></label>
             <input v-model="userSurnameEn" type="text" placeholder="e.g. Zhang" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文名', 'First Name (EN)', '英文名') }}</label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文名', 'First Name (EN)', '英文名') }} <span v-if="fieldsSaved && userFirstnameEn" class="text-green-600">✓</span></label>
             <input v-model="userFirstnameEn" type="text" placeholder="e.g. San" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
