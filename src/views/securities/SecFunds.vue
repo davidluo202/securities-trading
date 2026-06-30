@@ -12,13 +12,27 @@ const balance = ref({ hkd: 0, usd: 0, cny: 0 })
 const frozen = ref({ hkd: 0, usd: 0, cny: 0 })
 
 onMounted(async () => {
-  const email = localStorage.getItem('sec-user-email')
-  if (!email) return
+  let email = localStorage.getItem('sec-user-email') || ''
+  // Fallback: try to extract from auth token
+  if (!email) {
+    const token = localStorage.getItem('sec-auth-token')
+    if (token) { try { const d = JSON.parse(atob(token)); if (d.email) { email = d.email; localStorage.setItem('sec-user-email', email) } } catch {} }
+  }
+  // Fallback: try from user name storage
+  if (!email) {
+    // Last resort: check all localStorage keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.includes('email')) { const v = localStorage.getItem(key); if (v && v.includes('@')) { email = v; break } }
+    }
+  }
+  if (!email) { console.warn('SecFunds: no email found'); return }
   try {
     const profileRes = await fetch(`/api/profile?email=${encodeURIComponent(email)}`)
     const profileData = await profileRes.json()
+    console.log('SecFunds profile:', email, profileData?.data)
     const clientId = profileData?.data?.client_id || profileData?.data?.id
-    if (!clientId) return
+    if (!clientId) { console.warn('SecFunds: no clientId'); return }
     // Load client_balances from local API (shared DB)
     const cbRes = await fetch(`/api/funds?action=balance&client_id=${clientId}`)
     const cbData = await cbRes.json()
