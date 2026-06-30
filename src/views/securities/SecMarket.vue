@@ -378,7 +378,7 @@ onUnmounted(() => {
                   <div class="flex items-center justify-center gap-2">
                     <button
                       class="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
-                      @click.stop="router.push({ path: '/sec/trading', query: { symbol: s.symbol } })"
+                      @click.stop="router.push({ path: '/sec/trade', query: { symbol: s.symbol } })"
                     >{{ t('下單', 'Trade', '下单') }}</button>
                     <button
                       class="text-slate-400 hover:text-red-500 transition-colors"

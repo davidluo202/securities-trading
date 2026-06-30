@@ -51,6 +51,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, data: result.rows[0] });
     }
 
+    // GET balance
+    if (req.method === 'GET' && req.query.action === 'balance' && req.query.client_id) {
+      const result = await pool.query('SELECT * FROM client_balances WHERE client_id = $1', [parseInt(req.query.client_id as string)]);
+      if (result.rows.length === 0) return res.json({ success: true, data: { balance_hkd: 0, balance_usd: 0, balance_cny: 0, frozen_hkd: 0, frozen_usd: 0, frozen_cny: 0 } });
+      return res.json({ success: true, data: result.rows[0] });
+    }
+
     // GET - list fund transactions for a client (from securities system)
     if (req.method === 'GET') {
       const { client_id } = req.query;
