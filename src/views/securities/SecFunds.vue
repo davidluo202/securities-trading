@@ -75,11 +75,78 @@ function maskAccount(num: string) {
   return '****' + num.slice(-4)
 }
 
+// Tabs & shared state
+const activeTab = ref<'deposit' | 'withdraw'>('deposit')
+const submitting = ref(false)
+const submitSuccess = ref(false)
+const successMsg = ref('')
+
 // Deposit flow
 const showDeposit = ref(false)
 const depositAmount = ref('')
 const depositDisplay = ref('')
 const depositSubmitted = ref(false)
+
+// Withdraw flow
+const withdrawCurrency = ref('HKD')
+const withdrawAmount = ref(0)
+const withdrawAll = ref(false)
+const withdrawError = ref('')
+
+function getAvailableBalance(currency: string): number {
+  const key = currency.toLowerCase() as 'hkd' | 'usd' | 'cny'
+  return (balance.value[key] || 0) - (frozen.value[key] || 0)
+}
+
+function onWithdrawAllChange() {
+  if (withdrawAll.value) {
+    withdrawAmount.value = getAvailableBalance(withdrawCurrency.value)
+  } else {
+    withdrawAmount.value = 0
+  }
+}
+
+async function submitWithdraw() {
+  withdrawError.value = ''
+  const amt = withdrawAll.value ? getAvailableBalance(withdrawCurrency.value) : withdrawAmount.value
+  if (amt <= 0) { withdrawError.value = t('請輸入有效金額', 'Please enter a valid amount', '请输入有效金额'); return }
+  const avail = getAvailableBalance(withdrawCurrency.value)
+  if (amt > avail) { withdrawError.value = t('超出可用餘額', 'Exceeds available balance', '超出可用余额'); return }
+  if (!confirm(t(`確認出金 ${withdrawCurrency.value} ${fmtBal(amt)}？`, `Confirm withdraw ${withdrawCurrency.value} ${fmtBal(amt)}?`, `确认出金 ${withdrawCurrency.value} ${fmtBal(amt)}？`))) return
+  submitting.value = true
+  const userEmail = localStorage.getItem('sec-user-email') || ''
+  try {
+    const clientRes = await fetch(`/api/profile?email=${encodeURIComponent(userEmail)}`)
+    const clientData = await clientRes.json()
+    const clientId = clientData?.data?.client_id || clientData?.data?.id
+    if (clientId) {
+      const res = await fetch('/api/funds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          type: 'withdraw',
+          amount: amt,
+          currency: withdrawCurrency.value,
+          remarks: '证券系统出金',
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        successMsg.value = t(`出金申請已提交，編號: ${data.data?.tx_code || '-'}`, `Withdrawal submitted, ref: ${data.data?.tx_code || '-'}`, `出金申请已提交，编号: ${data.data?.tx_code || '-'}`)
+        submitSuccess.value = true
+        withdrawAmount.value = 0
+        withdrawAll.value = false
+        setTimeout(() => { submitSuccess.value = false; successMsg.value = '' }, 3000)
+      } else {
+        withdrawError.value = data.error || t('提交失敗', 'Submission failed', '提交失败')
+      }
+    }
+  } catch (e: any) {
+    withdrawError.value = e.message || t('網絡錯誤', 'Network error', '网络错误')
+  }
+  submitting.value = false
+}
 
 function formatAmountInput(val: string, addDecimals = false) {
   const num = val.replace(/[^0-9.]/g, '')
@@ -196,18 +263,26 @@ async function submitDeposit() {
         </div>
       </div>
 
-      <!-- Action Buttons -->
+      <!-- Tab Buttons -->
       <div class="flex gap-4">
         <button
-          class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all"
-          @click="showDeposit = !showDeposit"
+          :class="activeTab === 'deposit' ? 'bg-blue-700 text-white' : 'bg-white text-slate-600 border border-slate-300'"
+          class="px-6 py-3 rounded-xl text-sm font-bold shadow-sm hover:shadow transition-all"
+          @click="activeTab = 'deposit'"
         >
           {{ t('入金', 'Deposit', '入金') }}
+        </button>
+        <button
+          :class="activeTab === 'withdraw' ? 'bg-red-500 text-white' : 'bg-white text-slate-600 border border-slate-300'"
+          class="px-6 py-3 rounded-xl text-sm font-bold shadow-sm hover:shadow transition-all"
+          @click="activeTab = 'withdraw'"
+        >
+          {{ t('出金', 'Withdraw', '出金') }}
         </button>
       </div>
 
       <!-- Deposit Form -->
-      <div v-if="showDeposit" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div v-if="activeTab === 'deposit'" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('入金申請', 'Deposit Request', '入金申请') }}</h3>
 
         <!-- No bank accounts -->
@@ -257,6 +332,56 @@ async function submitDeposit() {
             @click="submitDeposit"
           >
             {{ t('提交', 'Submit', '提交') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Withdraw Form -->
+      <div v-if="activeTab === 'withdraw'" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 class="text-lg font-semibold text-red-600 mb-5">{{ t('出金申請', 'Withdraw Request', '出金申请') }}</h3>
+
+        <div v-if="submitSuccess" class="text-center py-8">
+          <svg class="w-12 h-12 mx-auto mb-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-green-600 text-base font-bold">{{ successMsg }}</p>
+        </div>
+        <div v-else class="space-y-5">
+          <!-- Currency -->
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">1</span>
+              <label class="text-sm font-semibold text-slate-700">{{ t('幣種', 'Currency', '币种') }}</label>
+            </div>
+            <select v-model="withdrawCurrency" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all">
+              <option value="HKD">HKD ({{ t('可用', 'Available', '可用') }}: {{ fmtBal(getAvailableBalance('HKD')) }})</option>
+              <option value="USD">USD ({{ t('可用', 'Available', '可用') }}: {{ fmtBal(getAvailableBalance('USD')) }})</option>
+              <option value="CNY">CNY ({{ t('可用', 'Available', '可用') }}: {{ fmtBal(getAvailableBalance('CNY')) }})</option>
+            </select>
+          </div>
+          <!-- Amount -->
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">2</span>
+              <label class="text-sm font-semibold text-slate-700">{{ t('金額', 'Amount', '金额') }}</label>
+            </div>
+            <input
+              v-model.number="withdrawAmount"
+              :disabled="withdrawAll"
+              type="number"
+              placeholder="0.00"
+              class="max-w-[240px] border-2 border-slate-600 rounded-xl px-4 py-3 text-lg font-bold outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all font-mono text-right"
+            />
+            <label class="flex items-center gap-2 mt-2 cursor-pointer">
+              <input type="checkbox" v-model="withdrawAll" @change="onWithdrawAllChange" class="rounded" />
+              <span class="text-sm text-slate-600">{{ t('全部提取', 'Withdraw All', '全部提取') }}</span>
+            </label>
+          </div>
+          <div v-if="withdrawError" class="text-red-500 text-sm font-medium">{{ withdrawError }}</div>
+          <button
+            :disabled="submitting"
+            class="px-6 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 shadow-sm hover:shadow transition-all disabled:opacity-50"
+            @click="submitWithdraw"
+          >
+            {{ submitting ? t('提交中...', 'Submitting...', '提交中...') : t('確認出金', 'Confirm Withdraw', '确认出金') }}
           </button>
         </div>
       </div>
