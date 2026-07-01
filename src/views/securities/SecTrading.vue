@@ -223,7 +223,7 @@ onUnmounted(() => {
 
 // Order entry
 const orderSide = ref<'buy' | 'sell'>('buy')
-const orderType = ref('limit')
+const orderType = ref(localStorage.getItem('sec-default-order-type') || 'limit')
 const quantity = ref(100)
 const price = ref(0)
 const shortSell = ref(false)
@@ -521,11 +521,17 @@ onUnmounted(() => { document.removeEventListener('click', onBodyClick) })
               </p>
             </div>
           </div>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('開', 'Open', '开') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.open || '--' }}</span></div>
-            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('高', 'High', '高') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.high || '--' }}</span></div>
-            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('低', 'Low', '低') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.low || '--' }}</span></div>
-            <div class="bg-slate-50 rounded-xl px-4 py-3"><span class="text-xs text-slate-400 block mb-1">{{ t('量', 'Vol', '量') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.volume || '--' }}</span></div>
+          <div class="grid grid-cols-3 lg:grid-cols-5 gap-2">
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('昨收', 'Prev Close', '昨收') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.prevClose || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('今開', 'Open', '今开') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.open || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('最高', 'High', '最高') }}</span><span class="text-sm font-semibold text-green-600">{{ quote.high || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('最低', 'Low', '最低') }}</span><span class="text-sm font-semibold text-red-600">{{ quote.low || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('成交量', 'Volume', '成交量') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.volume || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('成交額', 'Turnover', '成交额') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.turnover ? (Number(quote.turnover) > 1e8 ? (Number(quote.turnover)/1e8).toFixed(2) + '亿' : (Number(quote.turnover)/1e4).toFixed(0) + '万') : '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('52週高', '52W High', '52周高') }}</span><span class="text-sm font-semibold text-green-600">{{ quote.high52w || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('52週低', '52W Low', '52周低') }}</span><span class="text-sm font-semibold text-red-600">{{ quote.low52w || '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('總市值', 'Mkt Cap', '总市值') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.marketCap ? (Number(quote.marketCap) > 1e8 ? (Number(quote.marketCap)/1e8).toFixed(0) + '亿' : quote.marketCap) : '--' }}</span></div>
+            <div class="bg-slate-50 rounded-xl px-3 py-2"><span class="text-xs text-slate-400 block mb-0.5">{{ t('總股本', 'Shares', '总股本') }}</span><span class="text-sm font-semibold text-slate-700">{{ quote.totalShares ? (Number(quote.totalShares) > 1e8 ? (Number(quote.totalShares)/1e8).toFixed(2) + '亿' : (Number(quote.totalShares)/1e4).toFixed(0) + '万') : '--' }}</span></div>
           </div>
         </div>
 

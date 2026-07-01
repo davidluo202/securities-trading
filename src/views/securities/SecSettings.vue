@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage, type LangMode } from '../../composables/useLanguage'
 const { t, langMode, setLang } = useLanguage()
 
 const notifications = ref(true)
 const confirmBeforeOrder = ref(true)
-const defaultOrderType = ref('market')
-const defaultMarket = ref('HK')
+const defaultOrderType = ref(localStorage.getItem('sec-default-order-type') || 'market')
+const defaultMarket = ref(localStorage.getItem('sec-default-market') || 'HK')
+
+// Watch and persist trading preferences
+watch(defaultOrderType, v => localStorage.setItem('sec-default-order-type', v))
+watch(defaultMarket, v => localStorage.setItem('sec-default-market', v))
 
 // --- Personal Info (loaded from DB) ---
 const userSurname = ref('')
