@@ -332,7 +332,7 @@ function generateOrderRef(): string {
   return `${prefix}-${yy}${mm}${dd}-${seq}`
 }
 
-function submitOrder() {
+async function submitOrder() {
   if (!selectedStock.value || !quote.value) return
 
   // Validate
@@ -356,7 +356,28 @@ function submitOrder() {
     shortSell: orderSide.value === 'sell' && shortSell.value,
   }
 
-  // Save order
+  // Save order to DB (and localStorage as fallback)
+  try {
+    const token = localStorage.getItem('sec-auth-token') || ''
+    const apiRes = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        symbol: selectedStock.value!.symbol,
+        name: selectedStock.value!.name,
+        side: orderSide.value,
+        orderType: orderType.value,
+        quantity: quantity.value,
+        price: orderPrice,
+        isPaper: paperMode.value,
+        shortSell: orderSide.value === 'sell' && shortSell.value,
+      }),
+    })
+    const apiData = await apiRes.json()
+    if (apiData.success && apiData.data?.order_ref) {
+      order.orderRef = apiData.data.order_ref
+    }
+  } catch { /* fallback to localStorage */ }
   const orders: any[] = JSON.parse(localStorage.getItem('sec-orders') || '[]')
   orders.unshift(order)
   localStorage.setItem('sec-orders', JSON.stringify(orders))

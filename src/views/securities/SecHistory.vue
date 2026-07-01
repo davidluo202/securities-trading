@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useLanguage } from '../../composables/useLanguage'
 const { t } = useLanguage()
 
 const dateRange = ref('all')
+const dbOrders = ref<any[]>([])
 
 interface HistoryItem {
   date: string
@@ -19,31 +20,63 @@ interface HistoryItem {
   ref?: string
 }
 
-// Load trades from localStorage
+async function loadOrdersFromDB() {
+  try {
+    const token = localStorage.getItem('sec-auth-token') || ''
+    const res = await fetch('/api/orders', { headers: { 'Authorization': `Bearer ${token}` } })
+    const data = await res.json()
+    if (data.success && Array.isArray(data.data)) dbOrders.value = data.data
+  } catch { /* fallback below */ }
+}
+
+onMounted(loadOrdersFromDB)
+
+// Load trades from DB + localStorage fallback
 function loadHistory(): HistoryItem[] {
   const items: HistoryItem[] = []
 
-  // Load trading orders (filled ones)
-  try {
-    const orders = JSON.parse(localStorage.getItem('sec-orders') || '[]')
-    for (const o of orders) {
-      if (o.status === 'filled' || o.status === 'pending_review' || o.status === 'sent') {
-        items.push({
-          date: o.timestamp || o.createdAt || '',
-          type: 'trade',
-          symbol: o.symbol,
-          side: o.side,
-          qty: o.quantity,
-          price: o.price,
-          amount: (o.quantity || 0) * (o.price || 0),
-          currency: o.symbol?.endsWith('.SH') || o.symbol?.endsWith('.SZ') ? 'CNY' : o.symbol?.endsWith('.HK') ? 'HKD' : 'USD',
-          fee: o.fee || 0,
-          status: o.status,
-          ref: o.orderRef,
-        })
-      }
+  // Load trading orders from DB
+  for (const o of dbOrders.value) {
+    if (['filled', 'pending_review', 'sent'].includes(o.status)) {
+      items.push({
+        date: o.created_at || '',
+        type: 'trade',
+        symbol: o.symbol,
+        side: o.side,
+        qty: o.quantity,
+        price: Number(o.price),
+        amount: (o.quantity || 0) * Number(o.price || 0),
+        currency: o.symbol?.endsWith('.SH') || o.symbol?.endsWith('.SZ') ? 'CNY' : o.symbol?.endsWith('.HK') ? 'HKD' : 'USD',
+        fee: 0,
+        status: o.status,
+        ref: o.order_ref,
+      })
     }
-  } catch { /* silent */ }
+  }
+
+  // Fallback: also check localStorage for any orders not yet in DB
+  if (dbOrders.value.length === 0) {
+    try {
+      const orders = JSON.parse(localStorage.getItem('sec-orders') || '[]')
+      for (const o of orders) {
+        if (o.status === 'filled' || o.status === 'pending_review' || o.status === 'sent') {
+          items.push({
+            date: o.timestamp || o.createdAt || '',
+            type: 'trade',
+            symbol: o.symbol,
+            side: o.side,
+            qty: o.quantity,
+            price: o.price,
+            amount: (o.quantity || 0) * (o.price || 0),
+            currency: o.symbol?.endsWith('.SH') || o.symbol?.endsWith('.SZ') ? 'CNY' : o.symbol?.endsWith('.HK') ? 'HKD' : 'USD',
+            fee: o.fee || 0,
+            status: o.status,
+            ref: o.orderRef,
+          })
+        }
+      }
+    } catch { /* silent */ }
+  }
 
   // Load deposit/withdrawal records
   try {

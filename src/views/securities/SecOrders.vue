@@ -20,14 +20,39 @@ interface Order {
 }
 
 const orders = ref<Order[]>([])
+const loading = ref(false)
 
-function loadOrders() {
+async function loadOrders() {
+  loading.value = true
   try {
-    const raw = localStorage.getItem('sec-orders')
-    if (raw) {
-      orders.value = JSON.parse(raw)
+    const token = localStorage.getItem('sec-auth-token') || ''
+    const res = await fetch('/api/orders', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    const data = await res.json()
+    if (data.success && Array.isArray(data.data)) {
+      orders.value = data.data.map((r: any) => ({
+        orderRef: r.order_ref,
+        symbol: r.symbol,
+        name: r.name,
+        side: r.side,
+        type: r.order_type,
+        quantity: r.quantity,
+        price: Number(r.price),
+        status: r.status,
+        paper: r.is_paper,
+        timestamp: r.created_at,
+        shortSell: r.short_sell,
+      }))
     }
-  } catch { /* silent */ }
+  } catch {
+    // Fallback to localStorage for backward compatibility
+    try {
+      const raw = localStorage.getItem('sec-orders')
+      if (raw) orders.value = JSON.parse(raw)
+    } catch { /* silent */ }
+  }
+  loading.value = false
 }
 
 onMounted(loadOrders)
@@ -82,12 +107,17 @@ function formatTime(ts: string): string {
   } catch { return ts }
 }
 
-function cancelOrder(order: Order) {
+async function cancelOrder(order: Order) {
+  try {
+    const token = localStorage.getItem('sec-auth-token') || ''
+    await fetch('/api/orders', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ orderRef: order.orderRef, status: 'cancelled' }),
+    })
+  } catch { /* silent */ }
   const idx = orders.value.findIndex(o => o.orderRef === order.orderRef)
-  if (idx >= 0) {
-    orders.value[idx].status = 'cancelled'
-    localStorage.setItem('sec-orders', JSON.stringify(orders.value))
-  }
+  if (idx >= 0) orders.value[idx].status = 'cancelled'
 }
 </script>
 
