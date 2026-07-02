@@ -48,82 +48,10 @@ if (!userEmail.value) {
   }
 }
 
-onMounted(async () => {
-  if (!userEmail.value) return
-  try {
-    const res = await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`)
-    const data = await res.json()
-    if (data.success) {
-      if (data.surname) userSurname.value = data.surname
-      if (data.firstname) userFirstname.value = data.firstname
-      if (data.surname_en) userSurnameEn.value = data.surname_en
-      if (data.firstname_en) userFirstnameEn.value = data.firstname_en
-      userNameEn.value = ((data.firstname_en || '') + ' ' + (data.surname_en || '')).trim()
-      if (data.gender) userGender.value = data.gender
-      if (data.dob) {
-        userDob.value = data.dob.split('T')[0]
-        const parts = userDob.value.split('-')
-        if (parts.length === 3) { dobYear.value = parts[0]; dobMonth.value = parts[1]; dobDay.value = parts[2] }
-      }
-      userName.value = (data.surname || '') + (data.firstname || '')
-      if (data.phone) {
-        const cc = data.phoneCountry || '+852'
-        phoneCountry.value = cc
-        phoneNumber.value = data.phone.startsWith(cc) ? data.phone.slice(cc.length) : data.phone
-      }
-      if (data.phoneVerified) phoneVerified.value = true
-      // Sync to localStorage for Layout greeting
-      localStorage.setItem('sec-user-surname', userSurname.value)
-      localStorage.setItem('sec-user-name', userName.value)
-      localStorage.setItem('sec-user-gender', userGender.value)
-    }
-  } catch { /* silent */ }
-})
-
-async function saveAndExit() {
-  await saveProfile()
-  if (profileSaved.value) {
-    alert(t('✅ 保存成功！', '✅ Saved!', '✅ 保存成功！'))
-    history.back()
-  }
-}
-
-async function saveProfile() {
-  if (!userEmail.value) return
-  profileSaving.value = true
-  try {
-    const fullName = userSurname.value + userFirstname.value
-    userName.value = fullName
-    userNameEn.value = ((userFirstnameEn.value || '') + ' ' + (userSurnameEn.value || '')).trim()
-    await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        surname: userSurname.value,
-        firstname: userFirstname.value,
-        surname_en: userSurnameEn.value,
-        firstname_en: userFirstnameEn.value,
-        gender: userGender.value,
-        dob: userDob.value || null,
-        phone: phoneVerified.value ? (phoneCountry.value + phoneNumber.value.replace(/\s/g, '')) : '',
-        phoneCountry: phoneCountry.value,
-        phoneVerified: phoneVerified.value,
-      }),
-    })
-    // Sync to localStorage for Layout greeting
-    localStorage.setItem('sec-user-surname', userSurname.value)
-    localStorage.setItem('sec-user-name', fullName)
-    localStorage.setItem('sec-user-gender', userGender.value)
-    localStorage.setItem('sec-user-surname-en', userSurnameEn.value)
-    localStorage.setItem('sec-user-name-en', userNameEn.value)
-    profileSaved.value = true
-    fieldsSaved.value = true
-    setTimeout(() => { profileSaved.value = false; fieldsSaved.value = false }, 5000)
-  } catch (e) {
-    alert(t('保存失敗，請重試', 'Save failed, please retry', '保存失败，请重试'))
-  }
-  finally { profileSaving.value = false }
-}
+// --- Option Combo Preferences ---
+const tenorOptions = ['7D', '1M', '2M', '3M', '6M', '12M']
+const strikeOptions = ['80C', '85C', '90C', '95C', '100C', '103C', '105C', '110C', '120C']
+const selectedCombos = ref<string[]>(['1M-100C', '1M-103C', '1M-105C', '2M-100C', '2M-105C', '3M-100C'])
 
 // --- Phone Verification ---
 const countryCodes = [
@@ -224,6 +152,8 @@ async function verifyPhoneOtp() {
     localStorage.setItem('sec-phone-country', phoneCountry.value)
     phoneOtpSent.value = false
     phoneOtpCode.value = ''
+    // Save verified phone to DB immediately
+    saveProfile()
   } catch {
     phoneError.value = t('網絡錯誤', 'Network error', '网络错误')
   } finally {
@@ -240,64 +170,198 @@ function resetPhoneVerification() {
   localStorage.removeItem('sec-phone-verified')
 }
 
-// --- Bank Accounts ---
-interface BankAccount {
+// --- Bank Accounts (DB-backed, same schema as OTC) ---
+type BankAccount = {
+  id: string
   bankName: string
-  accountNumber: string
+  bankAccount: string
+  bankAccountType: string
   currency: string
-  holderName: string
 }
 
-function loadBankAccounts(): BankAccount[] {
-  try {
-    return JSON.parse(localStorage.getItem('sec-bank-accounts') || '[]')
-  } catch { return [] }
-}
+const hkBanks = [
+  'HSBC',
+  'Hang Seng Bank',
+  'Bank of China (HK)',
+  'Standard Chartered',
+  'ICBC Asia',
+  'CMB Wing Lung',
+  'DBS',
+  'Citibank',
+  'China CITIC Bank International',
+]
 
-const bankAccounts = ref<BankAccount[]>(loadBankAccounts())
+const bankAccounts = ref<BankAccount[]>([])
 const showBankForm = ref(false)
 const bankFormError = ref('')
-const newBank = ref({ bankName: '', accountNumber: '', currency: 'HKD', holderName: '' })
+const newBank = ref({ bankName: '', bankAccount: '', bankAccountType: 'checking', currency: 'HKD' })
 
-// Auto-fill holder name when opening bank form
-function openBankForm() {
-  showBankForm.value = true
-  // 优先使用英文姓名作为户名
-  newBank.value.holderName = userNameEn.value || userName.value || ''
-}
-
-const hkBanks = ['HSBC', 'Hang Seng', 'BOC', 'Standard Chartered', 'ICBC Asia', 'CMB Wing Lung', 'DBS', 'Citibank']
-
-function saveBankAccount() {
+function addBankAccount() {
   bankFormError.value = ''
-  newBank.value.holderName = userName.value || newBank.value.holderName
-  if (!newBank.value.bankName || !newBank.value.accountNumber || !newBank.value.holderName) {
-    bankFormError.value = t('請填寫所有必填項', 'Please fill in all required fields', '请填写所有必填项')
+  if (!newBank.value.bankName || !newBank.value.bankAccount.trim()) {
+    bankFormError.value = t('請完整輸入銀行名稱及賬號', 'Please fill in bank name and account number', '请完整输入银行名称及账号')
     return
   }
-  const acctNum = newBank.value.accountNumber.replace(/\s/g, '')
-  if (!/^\d{9,12}$/.test(acctNum)) {
-    bankFormError.value = t('賬戶號碼須為9-12位數字', 'Account number must be 9-12 digits', '账户号码须为9-12位数字')
+  const exists = bankAccounts.value.some(a => a.currency === newBank.value.currency && a.bankAccount === newBank.value.bankAccount.trim())
+  if (exists) {
+    bankFormError.value = t('該銀行賬戶已存在', 'This bank account already exists', '该银行账户已存在')
     return
   }
-  if (userName.value && newBank.value.holderName !== userName.value) {
-    bankFormError.value = t('持有人姓名必須與個人信息中的客戶姓名一致', 'Holder name must match your profile name', '持有人姓名必须与个人信息中的客户姓名一致')
-    return
-  }
-  bankAccounts.value.push({ ...newBank.value, accountNumber: acctNum })
-  localStorage.setItem('sec-bank-accounts', JSON.stringify(bankAccounts.value))
-  newBank.value = { bankName: '', accountNumber: '', currency: 'HKD', holderName: '' }
+  bankAccounts.value.push({
+    id: String(Date.now()),
+    bankName: newBank.value.bankName,
+    bankAccount: newBank.value.bankAccount.trim(),
+    bankAccountType: newBank.value.bankAccountType,
+    currency: newBank.value.currency,
+  })
+  newBank.value = { bankName: '', bankAccount: '', bankAccountType: 'checking', currency: 'HKD' }
   showBankForm.value = false
+  // Auto-save to DB
+  saveProfile()
 }
 
-function deleteBankAccount(index: number) {
-  bankAccounts.value.splice(index, 1)
-  localStorage.setItem('sec-bank-accounts', JSON.stringify(bankAccounts.value))
+function removeBankAccount(id: string) {
+  bankAccounts.value = bankAccounts.value.filter(a => a.id !== id)
+  // Auto-save to DB
+  saveProfile()
 }
 
 function maskAccount(num: string) {
   if (num.length <= 4) return num
   return '****' + num.slice(-4)
+}
+
+// --- Password Change ---
+const passwordForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const passwordSaving = ref(false)
+const passwordMsg = ref('')
+
+async function changePassword() {
+  passwordMsg.value = ''
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    passwordMsg.value = t('兩次密碼不一致', 'Passwords do not match', '两次密码不一致')
+    return
+  }
+  if (passwordForm.value.newPassword.length < 6) {
+    passwordMsg.value = t('新密碼至少6位', 'New password must be at least 6 characters', '新密码至少6位')
+    return
+  }
+  passwordSaving.value = true
+  try {
+    const res = await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}&action=password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        oldPassword: passwordForm.value.oldPassword,
+        newPassword: passwordForm.value.newPassword,
+      }),
+    })
+    const data = await res.json()
+    if (data.success) {
+      passwordMsg.value = t('密碼已修改', 'Password changed', '密码已修改')
+      passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
+    } else {
+      passwordMsg.value = data.error || t('修改失敗', 'Change failed', '修改失败')
+    }
+  } catch {
+    passwordMsg.value = t('網絡錯誤', 'Network error', '网络错误')
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
+// --- Load / Save Profile ---
+onMounted(async () => {
+  if (!userEmail.value) return
+  try {
+    const res = await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`)
+    const data = await res.json()
+    if (data.success) {
+      if (data.surname) userSurname.value = data.surname
+      if (data.firstname) userFirstname.value = data.firstname
+      if (data.surname_en) userSurnameEn.value = data.surname_en
+      if (data.firstname_en) userFirstnameEn.value = data.firstname_en
+      userNameEn.value = ((data.firstname_en || '') + ' ' + (data.surname_en || '')).trim()
+      if (data.gender) userGender.value = data.gender
+      if (data.dob) {
+        userDob.value = data.dob.split('T')[0]
+        const parts = userDob.value.split('-')
+        if (parts.length === 3) { dobYear.value = parts[0]; dobMonth.value = parts[1]; dobDay.value = parts[2] }
+      }
+      userName.value = (data.surname || '') + (data.firstname || '')
+      if (data.phone) {
+        const cc = data.phoneCountry || '+852'
+        phoneCountry.value = cc
+        phoneNumber.value = data.phone.startsWith(cc) ? data.phone.slice(cc.length) : data.phone
+      }
+      if (data.phoneVerified) phoneVerified.value = true
+      // Load bank accounts from DB
+      if (Array.isArray(data.bankAccounts) && data.bankAccounts.length > 0) {
+        bankAccounts.value = data.bankAccounts.map((a: any) => ({
+          id: String(a.id || Date.now()),
+          bankName: a.bankName || '',
+          bankAccount: a.bankAccount || '',
+          bankAccountType: a.bankAccountType || 'checking',
+          currency: a.currency || 'HKD',
+        }))
+      }
+      // Load option combo preferences
+      if (data.option_combo_preferences) {
+        try { selectedCombos.value = JSON.parse(data.option_combo_preferences) } catch {}
+      }
+      // Sync to localStorage for Layout greeting
+      localStorage.setItem('sec-user-surname', userSurname.value)
+      localStorage.setItem('sec-user-name', userName.value)
+      localStorage.setItem('sec-user-gender', userGender.value)
+    }
+  } catch { /* silent */ }
+})
+
+async function saveAndExit() {
+  await saveProfile()
+  if (profileSaved.value) {
+    alert(t('保存成功！', 'Saved!', '保存成功！'))
+    history.back()
+  }
+}
+
+async function saveProfile() {
+  if (!userEmail.value) return
+  profileSaving.value = true
+  try {
+    const fullName = userSurname.value + userFirstname.value
+    userName.value = fullName
+    userNameEn.value = ((userFirstnameEn.value || '') + ' ' + (userSurnameEn.value || '')).trim()
+    await fetch(`/api/profile?email=${encodeURIComponent(userEmail.value)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        surname: userSurname.value,
+        firstname: userFirstname.value,
+        surname_en: userSurnameEn.value,
+        firstname_en: userFirstnameEn.value,
+        gender: userGender.value,
+        dob: userDob.value || null,
+        phone: phoneVerified.value ? (phoneCountry.value + phoneNumber.value.replace(/\s/g, '')) : '',
+        phoneCountry: phoneCountry.value,
+        phoneVerified: phoneVerified.value,
+        bankAccounts: bankAccounts.value,
+        option_combo_preferences: JSON.stringify(selectedCombos.value),
+      }),
+    })
+    // Sync to localStorage for Layout greeting
+    localStorage.setItem('sec-user-surname', userSurname.value)
+    localStorage.setItem('sec-user-name', fullName)
+    localStorage.setItem('sec-user-gender', userGender.value)
+    localStorage.setItem('sec-user-surname-en', userSurnameEn.value)
+    localStorage.setItem('sec-user-name-en', userNameEn.value)
+    profileSaved.value = true
+    fieldsSaved.value = true
+    setTimeout(() => { profileSaved.value = false; fieldsSaved.value = false }, 5000)
+  } catch (e) {
+    alert(t('保存失敗，請重試', 'Save failed, please retry', '保存失败，请重试'))
+  }
+  finally { profileSaving.value = false }
 }
 </script>
 
@@ -315,22 +379,22 @@ function maskAccount(num: string) {
         <p class="text-xs text-slate-400 mb-2">{{ t('中文姓名', '中文姓名', 'Chinese Name') }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name (CN)', '姓') }} <span v-if="fieldsSaved && userSurname" class="text-green-600">✓</span></label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('姓', 'Last Name (CN)', '姓') }} <span v-if="fieldsSaved && userSurname" class="text-green-600">&#10003;</span></label>
             <input v-model="userSurname" type="text" :placeholder="t('如：张', 'e.g. 张', '如：张')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name (CN)', '名') }} <span v-if="fieldsSaved && userFirstname" class="text-green-600">✓</span></label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('名', 'First Name (CN)', '名') }} <span v-if="fieldsSaved && userFirstname" class="text-green-600">&#10003;</span></label>
             <input v-model="userFirstname" type="text" :placeholder="t('如：三', 'e.g. 三', '如：三')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
         <p class="text-xs text-slate-400 mb-2 mt-4">{{ t('英文姓名', '英文姓名', 'English Name') }}</p>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文姓', 'Last Name (EN)', '英文姓') }} <span v-if="fieldsSaved && userSurnameEn" class="text-green-600">✓</span></label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文姓', 'Last Name (EN)', '英文姓') }} <span v-if="fieldsSaved && userSurnameEn" class="text-green-600">&#10003;</span></label>
             <input v-model="userSurnameEn" type="text" placeholder="e.g. Zhang" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
           <div>
-            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文名', 'First Name (EN)', '英文名') }} <span v-if="fieldsSaved && userFirstnameEn" class="text-green-600">✓</span></label>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('英文名', 'First Name (EN)', '英文名') }} <span v-if="fieldsSaved && userFirstnameEn" class="text-green-600">&#10003;</span></label>
             <input v-model="userFirstnameEn" type="text" placeholder="e.g. San" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
           </div>
         </div>
@@ -365,7 +429,7 @@ function maskAccount(num: string) {
           <button class="px-6 py-3 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="profileSaving" @click="saveAndExit">
             {{ t('保存並退出', 'Save & Exit', '保存并退出') }}
           </button>
-          <span v-if="profileSaved" class="px-4 py-2 bg-green-100 border border-green-400 text-green-700 text-sm font-bold rounded-lg animate-pulse">✅ {{ t('保存成功！', 'Saved!', '保存成功！') }}</span>
+          <span v-if="profileSaved" class="px-4 py-2 bg-green-100 border border-green-400 text-green-700 text-sm font-bold rounded-lg animate-pulse">{{ t('保存成功！', 'Saved!', '保存成功！') }}</span>
         </div>
       </div>
     </div>
@@ -459,28 +523,45 @@ function maskAccount(num: string) {
 
       <!-- Saved accounts list -->
       <div v-if="bankAccounts.length > 0" class="space-y-3 mb-5">
-        <div v-for="(acct, idx) in bankAccounts" :key="idx" class="flex items-center justify-between border-2 border-slate-200 rounded-xl px-5 py-4 hover:border-slate-500 transition-colors">
+        <div v-for="acct in bankAccounts" :key="acct.id" class="flex items-center justify-between border-2 border-slate-200 rounded-xl px-5 py-4 hover:border-slate-500 transition-colors">
           <div class="text-base">
+            <span class="font-bold text-slate-800">{{ acct.currency }}</span>
+            <span class="text-slate-300 mx-2">|</span>
             <span class="font-bold text-slate-800">{{ acct.bankName }}</span>
-            <span class="text-slate-300 mx-3">|</span>
-            <span class="font-mono text-slate-500">{{ maskAccount(acct.accountNumber) }}</span>
-            <span class="text-slate-300 mx-3">|</span>
-            <span class="text-slate-500">{{ acct.currency }}</span>
-            <span class="text-slate-300 mx-3">|</span>
-            <span class="text-slate-500">{{ acct.holderName }}</span>
+            <span class="text-slate-300 mx-2">|</span>
+            <span class="font-mono text-slate-500">{{ maskAccount(acct.bankAccount) }}</span>
+            <span class="text-slate-300 mx-2">|</span>
+            <span class="text-slate-500">{{ acct.bankAccountType === 'checking' ? t('支票賬戶', 'Checking', '支票账户') : t('儲蓄賬戶', 'Savings', '储蓄账户') }}</span>
           </div>
-          <button class="text-sm text-red-600 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors" @click="deleteBankAccount(idx)">{{ t('刪除', 'Delete', '删除') }}</button>
+          <button class="text-sm text-red-600 hover:text-red-700 font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors" @click="removeBankAccount(acct.id)">{{ t('刪除', 'Delete', '删除') }}</button>
         </div>
       </div>
       <div v-else class="text-base text-slate-400 mb-5">{{ t('暫無銀行賬戶', 'No bank accounts saved', '暂无银行账户') }}</div>
 
       <!-- Add bank account button -->
-      <button v-if="!showBankForm" class="px-5 py-3 border-2 border-blue-600 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors" @click="openBankForm()">
+      <button v-if="!showBankForm" class="px-5 py-3 border-2 border-blue-600 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors" @click="showBankForm = true">
         {{ t('添加銀行賬戶', 'Add Bank Account', '添加银行账户') }}
       </button>
 
       <!-- Add bank account form -->
       <div v-if="showBankForm" class="border-2 border-slate-200 rounded-2xl p-6 space-y-4 bg-slate-50">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('幣種', 'Currency', '币种') }}</label>
+            <select v-model="newBank.currency" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
+              <option value="HKD">HKD</option>
+              <option value="CNY">CNY</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('賬戶類型', 'Account Type', '账户类型') }}</label>
+            <select v-model="newBank.bankAccountType" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
+              <option value="checking">{{ t('支票賬戶', 'Checking', '支票账户') }}</option>
+              <option value="savings">{{ t('儲蓄賬戶', 'Savings', '储蓄账户') }}</option>
+            </select>
+          </div>
+        </div>
         <div>
           <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('銀行名稱', 'Bank Name', '银行名称') }}</label>
           <select v-model="newBank.bankName" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
@@ -489,26 +570,12 @@ function maskAccount(num: string) {
           </select>
         </div>
         <div>
-          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('賬戶號碼', 'Account Number', '账户号码') }}</label>
-          <input v-model="newBank.accountNumber" type="text" inputmode="numeric" :placeholder="t('9-12位數字', '9-12 digits', '9-12位数字')" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('幣種', 'Currency', '币种') }}</label>
-          <select v-model="newBank.currency" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all bg-white">
-            <option value="HKD">HKD</option>
-            <option value="CNY">CNY</option>
-            <option value="USD">USD</option>
-          </select>
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('持有人姓名', 'Account Holder Name', '持有人姓名') }}</label>
-          <input :value="userNameEn || userName || newBank.holderName" readonly
-            class="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base bg-slate-50 text-slate-600 cursor-not-allowed" />
-          <p class="text-xs text-slate-400 mt-1">{{ t('自動從個人信息帶入', 'Auto-filled from profile', '自动从个人信息带入') }}</p>
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('銀行賬號', 'Account Number', '银行账号') }}</label>
+          <input v-model="newBank.bankAccount" type="text" inputmode="numeric" class="w-full border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
         </div>
         <p v-if="bankFormError" class="text-red-600 text-sm font-semibold">{{ bankFormError }}</p>
         <div class="flex gap-3 pt-1">
-          <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all" @click="saveBankAccount">
+          <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all" @click="addBankAccount">
             {{ t('保存', 'Save', '保存') }}
           </button>
           <button class="px-6 py-3 border-2 border-slate-500 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors" @click="showBankForm = false; bankFormError = ''">
@@ -516,6 +583,39 @@ function maskAccount(num: string) {
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Option Combo Preferences -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-2">{{ t('期權詢價組合偏好', 'Option Combo Preferences', '期权询价组合偏好') }}</h3>
+      <p class="text-xs text-slate-400 mb-4">{{ t('選擇期限和比例的組合，詢價時默認使用', 'Select tenor/strike combos used as default for RFQ', '选择期限和比例的组合，询价时默认使用') }}</p>
+      <div class="overflow-x-auto">
+        <table class="text-xs border-collapse">
+          <thead>
+            <tr>
+              <th class="px-2 py-1 text-left text-slate-500">{{ t('期限\\比例', 'Tenor\\Strike', '期限\\比例') }}</th>
+              <th v-for="s in strikeOptions" :key="s" class="px-2 py-1 text-center text-slate-500">{{ s }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="tenor in tenorOptions" :key="tenor">
+              <td class="px-2 py-1 font-semibold text-slate-600">{{ tenor }}</td>
+              <td v-for="s in strikeOptions" :key="s" class="px-1 py-1 text-center">
+                <button
+                  :class="['w-8 h-6 rounded text-xs font-bold transition-all',
+                    selectedCombos.includes(`${tenor}-${s}`) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200']"
+                  @click="selectedCombos.includes(`${tenor}-${s}`) ? selectedCombos.splice(selectedCombos.indexOf(`${tenor}-${s}`), 1) : selectedCombos.push(`${tenor}-${s}`)">
+                  {{ selectedCombos.includes(`${tenor}-${s}`) ? '&#10003;' : '' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">{{ t('已選', 'Selected', '已选') }} {{ selectedCombos.length }} {{ t('個組合', ' combos', '个组合') }}</p>
+      <button class="mt-3 px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="profileSaving" @click="saveProfile">
+        {{ profileSaving ? t('保存中...', 'Saving...', '保存中...') : t('保存偏好', 'Save Preferences', '保存偏好') }}
+      </button>
     </div>
 
     <!-- Language -->
@@ -579,6 +679,29 @@ function maskAccount(num: string) {
         >
           <span class="absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform" :class="notifications ? 'left-5.5' : 'left-0.5'" />
         </button>
+      </div>
+    </div>
+
+    <!-- Password Change -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-800 mb-5">{{ t('修改密碼', 'Change Password', '修改密码') }}</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('舊密碼', 'Current Password', '旧密码') }}</label>
+          <input v-model="passwordForm.oldPassword" type="password" class="w-full max-w-sm border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('新密碼', 'New Password', '新密码') }}</label>
+          <input v-model="passwordForm.newPassword" type="password" class="w-full max-w-sm border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+        </div>
+        <div>
+          <label class="text-sm font-semibold text-slate-700 block mb-2">{{ t('確認新密碼', 'Confirm New Password', '确认新密码') }}</label>
+          <input v-model="passwordForm.confirmPassword" type="password" class="w-full max-w-sm border-2 border-slate-500 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all" />
+        </div>
+        <button class="px-6 py-3 bg-blue-700 text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-sm hover:shadow transition-all disabled:opacity-50" :disabled="passwordSaving" @click="changePassword">
+          {{ passwordSaving ? t('修改中...', 'Changing...', '修改中...') : t('修改密碼', 'Change Password', '修改密码') }}
+        </button>
+        <p v-if="passwordMsg" class="text-sm font-semibold" :class="passwordMsg.includes(t('已修改', 'changed', '已修改')) ? 'text-green-600' : 'text-red-600'">{{ passwordMsg }}</p>
       </div>
     </div>
 
