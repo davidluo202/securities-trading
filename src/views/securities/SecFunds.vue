@@ -314,7 +314,7 @@ async function submitDeposit() {
             </div>
             <select v-model="selectedBankIndex" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all">
               <option v-for="(acct, idx) in bankAccounts" :key="idx" :value="idx">
-                {{ acct.bankName }} - {{ maskAccount(acct.accountNumber) }} ({{ acct.currency }})
+                {{ acct.bankName }} - {{ maskAccount(acct.bankAccount) }} ({{ acct.currency }})
               </option>
             </select>
           </div>
