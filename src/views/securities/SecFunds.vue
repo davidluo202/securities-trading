@@ -33,6 +33,16 @@ onMounted(async () => {
     console.log('SecFunds profile:', email, profileData?.data)
     const clientId = profileData?.data?.client_id || profileData?.data?.id
     if (!clientId) { console.warn('SecFunds: no clientId'); return }
+    // Load bank accounts from profile (shared DB)
+    if (Array.isArray(profileData?.bankAccounts) && profileData.bankAccounts.length > 0) {
+      bankAccounts.value = profileData.bankAccounts.map((a: any) => ({
+        bankName: a.bankName || a.bank_name || '',
+        bankAccount: a.bankAccount || a.bank_account || '',
+        currency: a.currency || 'HKD',
+        bankAccountType: a.bankAccountType || a.bank_account_type || 'checking',
+      }))
+      selectedBankIndex.value = 0
+    }
     // Load client_balances from local API (shared DB)
     const cbRes = await fetch(`/api/funds?action=balance&client_id=${clientId}`)
     const cbData = await cbRes.json()
@@ -53,18 +63,15 @@ onMounted(async () => {
 
 function fmtBal(n: number) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
-// Bank accounts from settings
+// Bank accounts from DB (shared with OTC)
 interface BankAccount {
   bankName: string
-  accountNumber: string
+  bankAccount: string
   currency: string
-  holderName: string
+  bankAccountType: string
 }
-function loadBankAccounts(): BankAccount[] {
-  try { return JSON.parse(localStorage.getItem('sec-bank-accounts') || '[]') } catch { return [] }
-}
-const bankAccounts = ref<BankAccount[]>(loadBankAccounts())
-const selectedBankIndex = ref(bankAccounts.value.length > 0 ? 0 : -1)
+const bankAccounts = ref<BankAccount[]>([])
+const selectedBankIndex = ref(-1)
 const selectedCurrency = computed(() => {
   const idx = selectedBankIndex.value
   if (idx >= 0 && idx < bankAccounts.value.length) return bankAccounts.value[idx].currency
