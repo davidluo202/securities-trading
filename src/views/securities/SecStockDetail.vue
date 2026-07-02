@@ -11,6 +11,34 @@ const router = useRouter()
 
 const symbol = computed(() => (route.params.symbol as string) || '')
 
+// Watchlist
+const isInWatchlist = ref(false)
+const toastMsg = ref('')
+
+function checkWatchlist() {
+  try {
+    const list = JSON.parse(localStorage.getItem('sec-watchlist') || '[]')
+    isInWatchlist.value = list.some((s: any) => s.symbol === symbol.value)
+  } catch { isInWatchlist.value = false }
+}
+
+function toggleWatchlist() {
+  try {
+    let list: { symbol: string; name: string }[] = JSON.parse(localStorage.getItem('sec-watchlist') || '[]')
+    if (isInWatchlist.value) {
+      list = list.filter(s => s.symbol !== symbol.value)
+      isInWatchlist.value = false
+      toastMsg.value = t('已移除自選股', 'Removed from watchlist', '已移除自选股')
+    } else {
+      list.push({ symbol: symbol.value, name: quote.value?.name || symbol.value })
+      isInWatchlist.value = true
+      toastMsg.value = t('已加入自選股 ✓', 'Added to watchlist ✓', '已加入自选股 ✓')
+    }
+    localStorage.setItem('sec-watchlist', JSON.stringify(list))
+    setTimeout(() => { toastMsg.value = '' }, 2000)
+  } catch {}
+}
+
 interface QuoteData {
   symbol: string; name: string; price: number; change: number; changePercent: number
   open: number; high: number; low: number; volume: string; prevClose: number
@@ -232,6 +260,7 @@ function goBack() {
 }
 
 onMounted(async () => {
+  checkWatchlist()
   await fetchQuote()
   await nextTick()
   initChart()
@@ -261,10 +290,17 @@ onUnmounted(() => {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      <div v-if="!loading && quote">
+      <div v-if="!loading && quote" class="flex-1">
         <div class="flex items-center gap-3">
           <h2 class="text-2xl font-bold text-slate-900">{{ quote.name || symbol }}</h2>
           <span class="text-sm text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg">{{ symbol }}</span>
+          <button
+            class="px-3 py-1.5 rounded-lg text-sm font-bold transition-all"
+            :class="isInWatchlist ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100'"
+            @click="toggleWatchlist"
+          >
+            {{ isInWatchlist ? t('已自選 ★', '★ Watching', '已自选 ★') : t('+ 加自選', '+ Watch', '+ 加自选') }}
+          </button>
         </div>
         <div class="flex items-center gap-4 mt-2">
           <span class="text-3xl font-bold tracking-tight" :class="quote.change >= 0 ? 'text-green-600' : 'text-red-600'">
@@ -311,6 +347,11 @@ onUnmounted(() => {
         <p class="text-sm text-slate-500 mb-2">{{ item.label }}</p>
         <p class="text-lg font-bold text-slate-900">{{ item.value }}</p>
       </div>
+    </div>
+
+    <!-- Toast -->
+    <div v-if="toastMsg" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
+      {{ toastMsg }}
     </div>
   </div>
 </template>
